@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Daily DMAX Form</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha384-DyZx78AnTb2dm+qElnR99ZZpBfzTq3Aj2mNh2qtw+J6dSe5Jk8GVjzPMLytIh5Dq" crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+</head>
+<body>
+    <div class="flex_div">
+        {% include 'sidemenu.html' %}
+        <div class="container" style="flex-grow:1;">
+            <div class="inside_container">
+                <h1 class="heading">Welcome to Daily DMAX Form</h1>
+                <p class="blinking_text">Please fill out this DMAX form without fail.</p>
+    
+            
+            <form method="post" action="/form" id="myForm">
+                <div class="form_div first_form_div" style="margin-left:auto;margin-right: auto; height:22rem;">
+                    <h2>Basic Information</h2>
+                    <div class="flex_first_div">
+                        
+                            <div class="inside_flex_div">
+                                <label for="employee-name">Employee Name:</label>
+                                <input type="text" id="employee_name" name="employee_name" required class="ipt" value="XXX">
+    
+                                <div id="employee-list" style="border: 1px solid #ccc; padding: 10px; display:none;"></div>
+                            </div>
+                            <div class="inside_flex_div">
+                                <label for="employee-id">Employee ID:</label>
+                                <input type="text" id="employee_id" name="employee_id" required class="ipt" value="DC0000">
+                            </div>
+                            
+                        
+                    </div>
+                    <div class="flex_first_div">
+                        
+                        <div class="inside_flex_div">
+                            <label for="employee-email">Employee Email:</label>
+                            <input type="email" id="employee_email" name="employee_email" required class="ipt" value="yy@qaoncloud.com">
+                        </div>
+                        <div class="inside_flex_div">
+                            <label for="today-date">Today's Date:</label>
+                            <input type="date" id="today_date" name="today_date" required class="iptef">
+                        </div>
+                        
+                    </div>
+                    <div class="flex_second_div">
+                        <div class="inside_flex_div">
+                            <label for="project">Select your Project</label>
+                            <select id="project" name="project" class="proj_Sel" required>
+                                <option disabled selected>Please select your Project</option>
+                                <option value="Akyrian">Akyrian</option>
+                                <option value="Auxo">Auxo</option>
+                                <option value="Avanti">Avanti</option>
+                                <option value="Bench">Bench</option>
+                                <option value="Fora Travels">Fora travels</option>
+                                <option value="Indihood">Indihood</option>
+                                <option value="IPS">IPS</option>
+                                <option value="IQHive">IQHive</option>
+                                <option value="LevelBlue">LevelBlue</option>
+                                <option value="Web Development">Web Development</option>
+                                <option value="Opus Clip">Opus Clip</option>
+                                <option value="Training">Training</option>
+                            </select>
+                        </div>
+                        <div class="inside_flex_div">
+                            <label for="designation">Select your Designation</label>
+                            <select id="designation" name="designation" class="desg_Sel" required>
+                                <option disabled selected>Please select your Designation</option>
+                                <option value="intern">Intern</option>
+                                <option value="jr_qa_engineer">Jr.QA Engineer</option>
+                                <option value="qa_engineer">QA Engineer</option>
+                                <option value="sr_qa_engineer">Sr.QA Engineer</option>
+                                <option value="qa_lead">QA Lead</option>
+                            </select>
+                        </div>
+    
+                        
+                    </div>
+    
+                    
+    
+                    
+                    
+                </div>
+                <div class="form_div" style="margin-left:auto;margin-right: auto;">
+                    <h2>Production Parameters</h2>
+                    <h3>Test cases</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fields</th>
+                        <th>Target</th>
+                        <th>Actual</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Test Case Creation</td>
+                        <td><input type="number" value="0" class="table_inpt" id="test_case_creation_target" name="test_case_creation_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="test_case_creation_actual" name="test_case_creation_actual"></td>
+                    </tr>
+                    <tr>
+                        <td>Test Case Updation</td>
+                        <td><input type="number" value="0" class="table_inpt" id="test_case_updation_target" name="test_case_updation_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="test_case_updation_actual" name="test_case_updation_actual"></td>
+                    </tr>
+                    <tr></tr>
+                        <td>Test Case Excecution</td>
+                        <td><input type="number" value="0" class="table_inpt" id="test_case_execution_target" name="test_case_execution_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="test_case_execution_actual"  name="test_case_execution_actual"></td>
+                    </tr>
+                    
+                    </tbody>
+            </table> 
+            <h3>Defects</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fields</th>
+                        <th>Target</th>
+                        <th>Actual</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Defects Found</td>
+                        <td><input type="number" value="0" class="table_inpt" id="defects_found_target" name="defects_found_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="defects_found_actual" name="defects_found_actual"></td>
+                    </tr>
+                    <tr>
+                        <td>Defects Verification</td>
+                        <td><input type="number" value="0" class="table_inpt" id="defects_verification_target" name="defects_verification_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="defects_verification_actual" name="defects_verification_actual"></td>
+                    </tr>
+                    </tbody>
+            </table>  
+            <h3>TestScripts</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fields</th>
+                        <th>Target</th>
+                        <th>Actual</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Test Scripts Creation</td>
+                        <td><input type="number" value="0" class="table_inpt" id="test_scripts_creation_target" name="test_scripts_creation_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="test_scripts_creation_actual" name="test_scripts_creation_actual"></td>
+                    </tr>
+                    <tr>
+                        <td>Test Scripts Updation</td>
+                        <td><input type="number" value="0" class="table_inpt" id="test_scripts_updation_target" name="test_scripts_updation_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="test_scripts_updation_actual" name="test_scripts_updation_actual"></td>
+                    </tr>
+                    <tr></tr>
+                        <td>Test Scripts Excecution</td>
+                        <td><input type="number" value="0" class="table_inpt" id="test_scripts_execution_target" name="test_scripts_execution_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="test_scripts_execution_actual" name="test_scripts_execution_actual"></td>
+                    </tr>
+                    
+                    </tbody>
+            </table> 
+            <h3>Others</h3>   
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fields</th>
+                        <th>Target</th>
+                        <th>Actual</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Site Scrub</td>
+                        <td><input type="number" value="0" class="table_inpt" id="site_Scrub_target" name="site_Scrub_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="site_Scrub_actual" name="site_Scrub_actual"></td>
+                    </tr>
+                    <tr>
+                        <td>Project Documentation</td>
+                        <td><input type="number" value="0" class="table_inpt" id="project_doc_target" name="project_doc_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="project_doc_actual" name="project_doc_actual"></td>
+                    </tr>
+                    <tr>
+                        <td>Internal Review</td>
+                        <td><input type="number" value="0" class="table_inpt" id="internal_Review_target" name="internal_Review_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="internal_Review_actual" name="internal_Review_actual"></td>
+                    </tr>
+                    <tr>
+                        <td>Regression Cycle</td>
+                        <td><input type="number" value="0" class="table_inpt" id="regression_cycle_target" name="regression_cycle_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="regression_cycle_actual" name="regression_cycle_actual"></td>
+                    </tr>
+                    <tr>
+                        <td>Requirement analyzing/writing testcondition</td>
+                        <td><input type="number" value="0" class="table_inpt" id="req_anal_target" name="req_anal_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="req_anal_actual" name="req_anal_actual"></td>
+                    </tr>
+                    <tr>
+                        <td>End-End test cases executed</td>
+                        <td><input type="number" value="0" class="table_inpt" id="end_cases_exec_target" name="end_cases_exec_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="end_cases_exec_actual" name="end_cases_exec_actual"></td>
+                    </tr>
+                    
+                    
+                    </tbody>
+            </table>  
+            <h3>Training</h3> 
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fields</th>
+                        <th>Target</th>
+                        <th>Actual</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Task Achivement/Coverage score</td>
+                        <td><input type="number" value="0" class="table_inpt" id="task_coverage_score_target" name="task_coverage_score_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="task_coverage_score_actual" name="task_coverage_score_actual"></td>
+                    </tr>
+                    <tr>
+                        <td>Assessment Test score</td>
+                        <td><input type="number" value="0" class="table_inpt" id="assessment_score_target" name="assessment_score_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="assessment_score_actual" name="assessment_score_actual"></td>
+                    </tr>
+                    <tr>
+                        <td>Assessment Retest score</td>
+                        <td><input type="number" value="0" class="table_inpt" id="assessment_re_score_target" name="assessment_re_score_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="assessment_re_score_actual" name="assessment_re_score_actual"></td>
+                    </tr>
+                    <tr>
+                        <td>Certification Test score</td>
+                        <td><input type="number" value="0" class="table_inpt" id="cert_score_target" name="cert_score_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="cert_score_actual" name="cert_score_actual"></td>
+                    </tr>
+                    <tr>
+                        <td>Certification Retest score</td>
+                        <td><input type="number" value="0" class="table_inpt" id="cert_re_score_target" name="cert_re_score_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="cert_re_score_actual" name="cert_re_score_actual"></td>
+                    </tr>
+                    </tbody>
+            </table>
+            <h3>Website Development</h3> 
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fields</th>
+                        <th>Target</th>
+                        <th>Actual</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>New Features Implemented</td>
+                        <td><input type="number" value="0" class="table_inpt" id="new_features_imp_target" name="new_features_imp_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="new_features_imp_actual" name="new_features_imp_actual"></td>
+                    </tr>
+                    <tr>
+                        <td>Defects Fixed</td>
+                        <td><input type="number" value="0" class="table_inpt" id="defects_fixed_target" name="defects_fixed_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="defects_fixed_actual" name="defects_fixed_actual"></td>
+                    </tr>
+                    <tr>
+                        <td>Enhancements</td>
+                        <td><input type="number" value="0" class="table_inpt" id="enhancements_target" name="enhancements_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="enhancements_actual" name="enhancements_actual"></td>
+                    </tr>
+                    <tr>
+                        <td>Figma Designs Created</td>
+                        <td><input type="number" value="0" class="table_inpt" id="fig_desgns_target" name="fig_desgns_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="fig_desgns_actual" name="fig_desgns_actual"></td>
+                    </tr>
+                    <tr>
+                        <td>Project Documentation Update</td>
+                        <td><input type="number" value="0" class="table_inpt" id="doc_update_target" name="doc_update_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="doc_update_actual" name="doc_update_actual"></td>
+                    </tr>
+                    <tr>
+                        <td>Research</td>
+                        <td><input type="number" value="0" class="table_inpt" id="research_target" name="research_target"></td>
+                        <td><input type="number" value="0" class="table_inpt" id="research_actual" name="research_actual"></td>
+                    </tr>
+                    </tbody>
+            </table>              
+                </div>
+                <div class="form_div" style="margin-left:auto;margin-right: auto;">
+                    <h2>Quality Parameters</h2>
+                    <p style="text-align: left;">Please carefully fill out the values in the appropriate fields</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>No. of Invalid defects</td>
+                                <td><input type="number" value="0" class="table_inpt" id="inv_defs" name="inv_defs"></td>
+                                
+                            </tr>
+                            <tr>
+                                <td>Spelling/Typo errors</td>
+                                <td><input type="number" value="0" class="table_inpt" id="spel_errors" name="spel_errors" step="0.1"></td>
+                            </tr>
+                            <tr>
+                                <td>Client escalations</td>
+                                <td><input type="number" value="0" class="table_inpt" id="client_esc" name="client_esc"></td>
+                            </tr>
+                            <tr>
+                                <td>No. of Test cases missing</td>
+                                <td><input type="number" value="0" class="table_inpt" id="tst_cases_missing" name="tst_cases_missing"></td>
+                                
+                            </tr>
+                            </tbody>
+                    </table>       
+                </div>
+                <div class="form_div" style="margin-left:auto;margin-right: auto;">
+                    <h2>Operational Excellence</h2>
+                    <p style="text-align: left;">Please carefully fill out the values in the appropriate fields</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>DTOUCH/Soft Skill</td>
+                                <td><input type="number" value="0" class="table_inpt" id="dtouch" name="dtouch"></td>
+                                
+                            </tr>
+                            <tr>
+                                <td>New initiatives</td>
+                                <td><input type="number" value="0" class="table_inpt" id="new_init" name="new_init"></td>
+                            </tr>
+                            <tr>
+                                <td>Attendance</td>
+                                <td><input type="number" value="0" class="table_inpt" id="att" name="att"></td>
+                            </tr>
+                            
+                            </tbody>
+                    </table>       
+                </div>
+                <div style="display: flex; justify-content: space-around;">
+                    <button type="submit" style="display: block;">Submit</button> 
+                    
+                        <button class="btn btn-success btn-primary">
+                            <a href="{%if role == 'manager'%}https://docs.google.com/spreadsheets/d/1rEK5-TOCqydPVENrpGgaivQ6A56O1is_2eEJK2VT5IE/edit{% else %}{{ url_for('no_access') }}{% endif %}" class="btn btn-success btn-primary" target="_blank" style="color: white;">Open Google sheet</a>
+                        </button>
+                    
+                        
+                       
+                </div>
+                 
+                
+            </form>    
+               
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="{{ url_for('static', filename='index.js') }}"></script> 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>  
+</body>
+</html>

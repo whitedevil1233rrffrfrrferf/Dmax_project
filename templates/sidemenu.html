@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://kit.fontawesome.com/9fe3d1bfff.js" crossorigin="anonymous"></script>
+    <script src="https://kit.fontawesome.com/9fe3d1bfff.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="first_sidebar">
+        <nav class="sidebar">
+    
+            <div class="inside_sidebar_div">
+                <a href="{%if role == 'admin'%}/register{% else %}{{ url_for('no_access') }}{% endif %}" class="btn btn-success btn-primary"><i class="fa-solid fa-user"></i></a>
+                <a href="{%if role == 'admin'%}/register{% else %}{{ url_for('no_access') }}{% endif %}" class="btn btn-success btn-primary">Register</a>
+            </div>
+            <div class="inside_sidebar_div">
+                <a href="/form"><i class="fa-regular fa-envelope"></i></a>
+                <a href="/form">Form</a>
+            </div>
+            
+            <div class="inside_sidebar_div">
+                <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i></a>
+                <a href="/logout">Logout</a>
+            </div>
+    
+        </nav>
+    </div>
+</body>
+</html>
