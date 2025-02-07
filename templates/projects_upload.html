@@ -19,7 +19,7 @@
       <div style="flex: 1;">
         
         <div>
-          <center><h1 class="heading" style="width: 60%;">Bulk add employees using Excel File</h1></center>
+          <center><h1 class="heading" style="width: 60%;">Upload Targets</h1></center>
           
       <div class="container">
           
@@ -27,7 +27,7 @@
           
           <div class="card-body">
               <div class="container" style="display: flex; justify-content: space-around; align-items: center; height: 20rem; margin-top: 20px;">
-                  <form action="{{url_for('employee_upload')}}" method="post" enctype="multipart/form-data" style=" max-width:40rem; border: 1px solid black; padding: 20px; width:30rem; box-shadow: 5px 15px 25px rgba(0,0,0,0.35);">
+                  <form action="{{url_for('project_targets')}}" method="post" enctype="multipart/form-data" style=" max-width:40rem; border: 1px solid black; padding: 20px; width:30rem; box-shadow: 5px 15px 25px rgba(0,0,0,0.35);">
                     
                       <div  style="position: relative; left:100px;">
                           <h4 style="display: inline; text-align: center;">File:</h4>
@@ -41,7 +41,7 @@
       
                   <div style="border: 1px solid black; padding: 20px; width:30rem; box-shadow: 5px 15px 25px rgba(0,0,0,0.35); height:10rem;">
                       <h2 style="text-align: center;">Download Excel format</h2>
-                      <a href="static/files/DMAX-2024-Live.xlsx" download class="btn btn-info icon mt-3">Download <i
+                      <a href="static/files/emp_info.xlsx" download class="btn btn-info icon mt-3">Download <i
                               class="fa-solid fa-download"></i></a>
                              
                   </div>
@@ -56,7 +56,7 @@
           </div>
       </div>
     
-      <a class="btn btn-outline-secondary" href="{{url_for('team_dmax_table')}}" style=" padding:10px ;margin-top:30px; margin-left:570px;"><div style="display: flex; justify-content: space-between; padding:5px;">
+      <a class="btn btn-outline-secondary" href="{{url_for('home')}}" style=" padding:10px ;margin-top:30px; margin-left:570px;"><div style="display: flex; justify-content: space-between; padding:5px;">
         <div>
           <i class="fa-solid fa-backward" style="margin-right: 10px;"></i>
         </div>

@@ -15,7 +15,7 @@
                 <p class="blinking_text">Please fill out this DMAX form without fail.</p>
     
             
-            <form method="post" action="{{url_for('home')}}" id="myForm">
+            <form method="post" action="{{url_for('home')}}" id="myForm" autocomplete="off">
                 <div class="form_div first_form_div" style="margin-left:auto;margin-right: auto; height:16rem;">
                     <h3 class="secondary_heading">Basic Information</h3>
                     <div class="flex_first_div">
@@ -101,6 +101,14 @@
                 </div>
                 <div class="form_div" style="margin-left:auto;margin-right: auto;">
                     <h3 class="secondary_heading">Production Parameters</h2>
+                    <div style="margin-top: 20px;">
+                        
+                        <label for="att" class=" ipt_label" style="font-size: 1.1rem !important;">Attendance:</td>
+                        <input type="number" value="0"  id="att" name="att" style="width:40rem;"  min="0" 
+                        max="1" 
+                        step="1">
+                        
+                    </div>    
                     <div id="test_cases_section">
                         <h3>Test cases</h3>
                         <!-- <table>
@@ -130,6 +138,7 @@
                                 
                                 </tbody>
                         </table>  -->
+                        
                         <table>
                             <thead >
                                 <tr>
@@ -450,11 +459,14 @@
                 </div> -->
                 <div style="display: flex; justify-content: space-around;">
                     <button type="submit" style="display: block;">Submit</button> 
+                    <a href="{{ url_for('form_bulk_upload') }}">
+                        <button type="button" style="display: block;">Bulk Upload</button>
+                    </a>
                     
                         <button class="btn btn-success btn-primary" style=" display: none;">
                             <a href="{%if role == 'manager'%}https://docs.google.com/spreadsheets/d/1rEK5-TOCqydPVENrpGgaivQ6A56O1is_2eEJK2VT5IE/edit{% else %}{{ url_for('no_access') }}{% endif %}" class="btn btn-success btn-primary" target="_blank" style="color: white;">Open Google sheet</a>
                         </button>
-                    
+                        
                         
                        
                 </div>

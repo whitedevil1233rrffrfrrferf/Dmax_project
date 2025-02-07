@@ -160,8 +160,17 @@ document.getElementById("myForm").addEventListener("keydown", function(event) {
 });
 
 document.getElementById("myForm").addEventListener("submit",function(){
-    event.preventDefault();
+            const attendance = document.getElementById("att").value;
 
+            if (attendance == 0) {
+                // Show confirmation popup for attendance = 0
+                let confirmAttendance = confirm("Attendance is 0. All the values will be set to 0. Are you sure you want to submit?");
+                if (!confirmAttendance) {
+                    alert("Submission canceled due to attendance being 0.");
+                    return; // Stop further execution if user cancels
+                }
+            }
+    
             // Show confirmation popup
             let confirmation = confirm("Are you sure you want to submit the form?");
 
@@ -174,5 +183,6 @@ document.getElementById("myForm").addEventListener("submit",function(){
                 alert("Submission canceled.");
             }    
 })
+
      
 

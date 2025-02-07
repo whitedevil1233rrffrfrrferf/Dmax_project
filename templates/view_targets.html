@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Daily DMAX Form</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha384-DyZx78AnTb2dm+qElnR99ZZpBfzTq3Aj2mNh2qtw+J6dSe5Jk8GVjzPMLytIh5Dq" crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+</head>
+<body>
+    <div class="flex_div">
+        {% include 'sidemenu.html' %}
+        <div class="container" style="flex-grow:1;">
+            <div class="inside_container">
+                <h1 class="heading">Targets Form</h1>
+                <p class="blinking_text">Please fill out this Target form without fail.</p>
+            <form method="post id="myForm" autocomplete="off">
+                <div class="form_div first_form_div" style="margin-left:auto;margin-right: auto; height:13rem;">
+                    <h3 class="secondary_heading">Basic Information</h3>
+                    <div class="flex_first_div">
+                        <div class="inside_flex_div_2">
+                            <div class="inside_flex_div">
+                                <label for="employee_name" class="ipt_label">Employee Name:</label>
+                                <div class="inside_flex_div_2">
+                                    <input type="text" id="employee_name" name="employee_name" required class="ipt" value="{{ values.emp_name }}" readonly>
+                                    <datalist id="employee-list" style="border: 1px solid #ccc; padding: 10px; display:none;" class="suggestion-list"></datalist>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="inside_flex_div_2" >
+                            <div class="inside_flex_div">
+                                <label for="employee-id" class="ipt_label">Employee ID:</label>
+                                <div class="inside_flex_div_2">
+                                    <input type="text" id="emp_id" name="employee_id" required class="ipt" placeholder="DC0000" value="{{ values.emp_id }}" readonly>
+                                    <input type="hidden" name="role" value="{{ role }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex_first_div">
+                        <div class="inside_flex_div">
+                            <label for="target_month" class="two_label">Target month:</label>
+                            <select id="target_month" class="proj_Sel select"  name="target_month" readonly>
+                                {% for key, value in monthsDict.items() %}
+                                    <option value="{{ value }}" {% if fields.get('target_month') == value %}selected{% endif %}>
+                                        {{ value }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="inside_flex_div">
+                            <label for="target_year" class="two_label" style="margin-bottom:10px;">Select Year :</label>
+                            <input  id="target_year" type="number" name="target_year" required class="iptef" value="{{fields.get('target_year',0)}}" readonly>
+                        </div>
+                    </div>
+                </div>
+                <div class="form_div" style="margin-left:auto;margin-right: auto;">
+                    <h3 class="secondary_heading">Production Parameters</h2>
+                    <div id="test_cases_section">
+                        <h3>Test cases</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Creation Target</th>
+                                    <th>Updation Target</th>
+                                    <th>Execution Target</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><input type="number" value="{{ fields.get('test_case_creation_target',0) }}" class="table_inpt" id="test_case_creation_target" name="test_case_creation_target" ></td>
+                                    <td><input type="number" value="{{ fields.get('test_case_updation_target',0) }}" class="table_inpt" id="test_case_updation_target" name="test_case_updation_target"></td>
+                                    <td><input type="number" value="{{ fields.get('test_case_execution_target',0) }}" class="table_inpt" id="test_case_execution_target" name="test_case_execution_target"></td>
+
+                                </tr>
+                                </tbody>
+                        </table> 
+                    </div>
+                        
+            <div id="defects_section">
+                <h3 class="secondary_heading">Defects</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Defects found target</th>
+                            <th>Issue verification target</th>
+                            
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><input type="number" value="{{ fields.get('defects_found_target',0) }}" class="table_inpt" id="defects_found_target" name="defects_found_target"></td>
+                            <td><input type="number" value="{{ fields.get('defects_verification_target',0) }}" class="table_inpt" id="defects_verification_target" name="defects_verification_target"></td>
+                            
+                        </tr>
+                        
+                        </tbody>
+                </table> 
+            </div> 
+            <div id="test_scripts_section">
+                <h3 class="secondary_heading" style="font-size: 16px;">TestScripts</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>creation-target</th>
+                            
+                            <th>updation-target</th>
+                            
+                            <th>execution-target</th>
+                            
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><input type="number" value="{{ fields.get('test_scripts_creation_target',0) }}" class="table_inpt" id="test_scripts_creation_target" name="test_scripts_creation_target"></td>
+                            
+                            <td><input type="number" value="{{ fields.get('test_scripts_updation_target',0) }}" class="table_inpt" id="test_scripts_updation_target" name="test_scripts_updation_target"></td>
+                             
+                            <td><input type="number" value="{{ fields.get('test_scripts_execution_target',0) }}" class="table_inpt" id="test_scripts_execution_target" name="test_scripts_execution_target"></td>
+                            
+                        </tr>
+                        
+                        
+                        </tbody>
+                </table> 
+            </div>
+            <div id="others_section">
+                <h3>Others</h3>   
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fields</th>
+                        <th>Target</th>
+                        
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="row_data">Site Scrub</td>
+                        <td><input type="number" value="{{ fields.get('site_Scrub_target',0) }}" class="table_inpt" id="site_Scrub_target" name="site_Scrub_target"></td>
+                        
+                    </tr>
+                    <tr>
+                        <td class="row_data">Project Documentation</td>
+                        <td><input type="number" value="{{ fields.get('project_doc_target',0) }}" class="table_inpt" id="project_doc_target" name="project_doc_target"></td>
+                        
+                    </tr>
+                    <tr>
+                        <td class="row_data">Internal Review</td>
+                        <td><input type="number" value="{{ fields.get('internal_Review_target',0) }}" class="table_inpt" id="internal_Review_target" name="internal_Review_target"></td>
+                        
+                    </tr>
+                    <tr>
+                        <td class="row_data">Regression Cycle</td>
+                        <td><input type="number" value="{{ fields.get('regression_cycle_target',0) }}" class="table_inpt" id="regression_cycle_target" name="regression_cycle_target"></td>
+                        
+                    </tr>
+                    <tr>
+                        <td class="row_data">Requirement analyzing/writing testcondition</td>
+                        <td><input type="number" value="{{ fields.get('req_anal_target',0) }}" class="table_inpt" id="req_anal_target" name="req_anal_target"></td>
+                        
+                    </tr>
+                    <tr>
+                        <td class="row_data">End-End test cases executed</td>
+                        <td><input type="number" value="{{ fields.get('end_cases_exec_target',0) }}" class="table_inpt" id="end_cases_exec_target" name="end_cases_exec_target"></td>
+                        
+                    </tr>
+                    
+                    
+                    </tbody>
+            </table> 
+            </div> 
+                    
+                    
+            <div id="training_section">
+                <h3 class="secondary_heading">Training</h3> 
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fields</th>
+                            <th>Target</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="row_data">Task Achivement/Coverage score</td>
+                            <td><input type="number" value="{{ fields.get('task_coverage_score_target',0) }}" class="table_inpt" id="task_coverage_score_target" name="task_coverage_score_target"></td>
+                            
+                        </tr>
+                        <tr>
+                            <td class="row_data">Assessment Test score</td>
+                            <td><input type="number" value="{{ fields.get('assessment_score_target',0) }}" class="table_inpt" id="assessment_score_target" name="assessment_score_target"></td>
+                            
+                        </tr>
+                        <tr>
+                            <td class="row_data">Assessment Retest score</td>
+                            <td><input type="number" value="{{ fields.get('assessment_re_score_target',0) }}" class="table_inpt" id="assessment_re_score_target" name="assessment_re_score_target"></td>
+                            
+                        </tr>
+                        <tr>
+                            <td class="row_data">Certification Test score</td>
+                            <td><input type="number" value="{{ fields.get('cert_score_target',0) }}" class="table_inpt" id="cert_score_target" name="cert_score_target"></td>
+                        </tr>
+                        <tr>
+                            <td class="row_data">Certification Retest score</td>
+                            <td><input type="number" value="{{ fields.get('cert_re_score_target',0) }}" class="table_inpt" id="cert_re_score_target" name="cert_re_score_target"></td>
+                        </tr>
+                        </tbody>
+                </table>
+            </div>
+            <div id="web_section">
+                <h3>Website Development</h3> 
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fields</th>
+                            <th>Target</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="row_data">New Features Implemented</td>
+                            <td><input type="number" value="{{ fields.get('new_features_imp_target',0) }}" class="table_inpt" id="new_features_imp_target" name="new_features_imp_target"></td>
+                        </tr>
+                        <tr>
+                            <td class="row_data">Defects Fixed</td>
+                            <td><input type="number" value="{{ fields.get('defects_fixed_target',0) }}" class="table_inpt" id="defects_fixed_target" name="defects_fixed_target"></td>
+                        </tr>
+                        <tr>
+                            <td class="row_data">Enhancements</td>
+                            <td><input type="number" value="{{ fields.get('enhancements_target',0) }}" class="table_inpt" id="enhancements_target" name="enhancements_target"></td>
+                        </tr>
+                        <tr>
+                            <td class="row_data">Figma Designs Created</td>
+                            <td><input type="number" value="{{ fields.get('fig_desgns_target',0) }}" class="table_inpt" id="fig_desgns_target" name="fig_desgns_target"></td>
+                        </tr>
+                        <tr>
+                            <td class="row_data">Project Documentation Update</td>
+                            <td><input type="number" value="{{ fields.get('doc_update_target',0) }}" class="table_inpt" id="doc_update_target" name="doc_update_target"></td>
+                        </tr>
+                        <tr>
+                            <td class="row_data">Research</td>
+                            <td><input type="number" value="{{ fields.get('research_target',0) }}" class="table_inpt" id="research_target" name="research_target"></td>
+                        </tr>
+                        </tbody>
+                </table> 
+            </div>             
+                </div>
+                
+                <div style="display: flex; justify-content: space-around;">
+                    {% if role == "Project Lead" %}
+                        <button type="submit" style="display: block;">Submit</button>
+                    {% elif role == "Approval Manager" %}
+                        
+                        <button type="submit" style="display: block;">Approve Targets</button>
+                             
+                    {% endif %}    
+                      
+                </div>
+                <!-- <div style="display: flex; justify-content: space-around;">
+                    {% if role == "Project Lead" %}
+                        <button type="submit" style="display: block;" onclick="setFormAction('set_targets')">Submit</button>
+                    {% elif role == "Approval Manager" %}
+                        <button type="submit" style="display: block;" onclick="setFormAction('approve_targets')">Approve Targets</button>
+                    {% endif %}    
+                      
+                </div> -->
+
+            </form>    
+            </div>
+        </div>
+    </div>
+    <script>
+        const searchUrl = "{{ url_for('search_employee') }}";
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+        const inputs = document.querySelectorAll(" input");
+        inputs.forEach(function(input) {
+            input.setAttribute("readonly", "true");  // Make input read-only
+        });
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="{{ url_for('static', filename='index.js') }}"></script> 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>  
+</body>
+</html>

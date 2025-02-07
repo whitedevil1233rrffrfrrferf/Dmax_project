@@ -1,5 +1,4 @@
-from io import BytesIO
-from flask import Flask,render_template,request,redirect, send_file,url_for,jsonify,flash,session
+from flask import Flask,render_template,request,redirect,url_for,jsonify,flash,session
 from dotenv import load_dotenv
 import os
 from openpyxl import load_workbook
@@ -9,7 +8,7 @@ from google.oauth2 import service_account
 import json
 from datetime import datetime
 import openpyxl
-from sqlalchemy import case, extract, func, or_
+from sqlalchemy import extract, func, or_
 import requests
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
@@ -61,8 +60,7 @@ app.config['SQLALCHEMY_BINDS']={
     'dform':'sqlite:///dform.db',
     'emp_info':'sqlite:///empinfo.db',
     'op_excellence':'sqlite:///opexcellence.db',
-    'target_columns':'sqlite:///target_columns.db',
-    'project_targets':'sqlite:///project_targets.db'
+    'target_columns':'sqlite:///target_columns.db'
 }
 db = SQLAlchemy(app)
 
@@ -99,19 +97,13 @@ def get_filtered_employees(base_query, search_query, selected_month, selected_da
         base_query = base_query.filter_by(today_date=selected_date)
     return base_query.all()
 
-def get_first_filtered_employees(base_query, search_query, selected_month, selected_date,selected_year):
+def get_first_filtered_employees(base_query, search_query, selected_month, selected_date):
     if search_query:
         base_query = base_query.filter(func.lower(Dform.employee_name) == search_query)
     if selected_month:
         base_query = base_query.filter(extract('month', Dform.today_date) == int(selected_month))
     if selected_date:
-        try:
-            selected_date = datetime.strptime(selected_date, "%Y-%m-%d").date()  # Convert to date
-            base_query = base_query.filter(Dform.today_date == selected_date)  # ✅ Correct filtering
-        except ValueError:
-            print("Invalid date format:", selected_date)  # Debugging log
-    if selected_year:  # Add year filtering
-        base_query = base_query.filter(extract('year', Dform.today_date) == int(selected_year))    
+        base_query = base_query.filter_by(today_date=selected_date)
     return base_query
 
 def get_date_range_for_month(month):
@@ -142,16 +134,7 @@ def get_averages_for_filtered_employees(filtered_entries):
             func.avg(Dform.new_initiatives).label('avg_new_initiatives'),
             func.avg(Dform.Dmax_score).label('avg_Dmax_score')
         ).first()
-        return {
-                "avg_target": round(averages.avg_target, 2) if averages.avg_target else 0,
-                "avg_actual": round(averages.avg_actual, 2) if averages.avg_actual else 0,
-                "avg_production": round(averages.avg_production, 2) if averages.avg_production else 0,
-                "avg_quality": round(averages.avg_quality, 2) if averages.avg_quality else 0,
-                "avg_attendance": round(averages.avg_attendance, 2) if averages.avg_attendance else 0,
-                "avg_skill": round(averages.avg_skill, 2) if averages.avg_skill else 0,
-                "avg_new_initiatives": round(averages.avg_new_initiatives, 2) if averages.avg_new_initiatives else 0,
-                "avg_Dmax_score": round(averages.avg_Dmax_score, 2) if averages.avg_Dmax_score else 0
-            }
+        return averages
     return None
 
 
@@ -165,46 +148,6 @@ def calculate_attendance(designation, attendance_input):
         attendance = 0  # Default case
 
     return attendance*10
-
-def generate_excel_from_template(employees):
-    directory = os.path.abspath("static/files")
-    filename = "DMAX-sample.xlsx"
-    sample_file_path = os.path.join(directory, filename)
-    wb = load_workbook(sample_file_path)
-    ws = wb.active  # Get the active sheet
-    
-    start_row = 4  
-
-    # List of database columns corresponding to template headers
-    ALLOWED_COLUMNS = [
-            "employee_name","employee_id","employee_email","today_date","project","designation",
-            "test_case_creation_target","test_case_creation_actual",
-            "test_case_updation_target", "test_case_updation_actual",
-            "test_case_execution_target", "test_case_execution_actual", 
-            "defects_found_target", "defects_found_actual","defects_verification_target", "defects_verification_actual", 
-            "test_scripts_creation_target", "test_scripts_creation_actual","test_scripts_updation_target", "test_scripts_updation_actual",
-            "test_scripts_execution_target","test_scripts_execution_actual","project_doc_target",
-            "project_doc_actual", "internal_Review_target", "internal_Review_actual", "regression_cycle_target",
-            "regression_cycle_actual", "req_anal_target", "req_anal_actual", "end_cases_exec_target", "end_cases_exec_actual",
-            "site_Scrub_target", "site_Scrub_actual", 
-            "task_coverage_score_target", "task_coverage_score_actual",
-            "assessment_score_target", "assessment_score_actual", "assessment_re_score_target",
-            "assessment_re_score_actual", "cert_score_target", "cert_score_actual", "cert_re_score_target","cert_re_score_actual",
-            "new_features_imp_target", "new_features_imp_actual", "defects_fixed_target",
-            "defects_fixed_actual", "enhancements_target", "enhancements_actual", "fig_desgns_target",
-            "fig_desgns_actual", "doc_update_target", "doc_update_actual", "research_target", "research_actual",
-            "inv_defs", "spel_errors", "client_esc", "tst_cases_missing", "attendance", "skill", "new_initiatives", "target", "actual", "production",
-            "quality", "attendance", "skill", "new_initiatives", "Dmax_score"
-    ]
-    for row_num, emp in enumerate(employees, start=start_row):
-        for col_num, column_name in enumerate(ALLOWED_COLUMNS, start=1):
-            ws.cell(row=row_num, column=col_num, value=getattr(emp, column_name, ''))
-
-    # Save the modified file to memory (without changing the original)
-    output = BytesIO()
-    wb.save(output)
-    output.seek(0)
-    return send_file(output, download_name="filtered_employees.xlsx", as_attachment=True, mimetype="application/octet-stream")
 ###############################################  Month dictionary ###############################################
 
 monthsDict = {
@@ -222,17 +165,6 @@ monthsDict = {
     "12": "December"
   }
 
-monthsDict_2 = {
-    "January": 1, "February": 2, "March": 3, "April": 4,
-    "May": 5, "June": 6, "July": 7, "August": 8,
-    "September": 9, "October": 10, "November": 11, "December": 12
-}
-###############################################  Helper Variables ###############################################
-
-current_date = datetime.now().date()
-current_month=current_date.month
-current_year=current_date.year
-last_ten_years = [current_year +1 - i for i in range(11)]
 
 
 class Dform(db.Model):
@@ -364,7 +296,6 @@ class Employee_information(db.Model):
     new_init=db.Column(db.Integer)
     defects_verification_target=db.Column(db.Integer)
     reporting_manager=db.Column(db.String(100))
-    actual_reporting_manager=db.Column(db.String(100))
     target_month=db.Column(db.String(100))
 
 class Target_columns(db.Model):
@@ -404,8 +335,6 @@ class Target_columns(db.Model):
     new_init=db.Column(db.Integer)
     defects_verification_target=db.Column(db.Integer)
     target_month=db.Column(db.String(100))
-    target_year=db.Column(db.String(100))
-    status=db.Column(db.String(100))
 
 class OperationalExcellence(db.Model):
     __bind_key__="op_excellence"
@@ -418,13 +347,6 @@ class OperationalExcellence(db.Model):
     start_date = db.Column(db.String(100))
     end_date = db.Column(db.String(100))
 
-class ProjectTargets(db.Model):
-    __bind_key__="project_targets"
-    
-    id = db.Column(db.Integer, primary_key=True)
-    Project = db.Column(db.String(100), nullable=False, unique=True)   
-    Lead = db.Column(db.String(100), nullable=False)
-    ApprovalManager= db.Column(db.String(100), nullable=False)
 
 
 @app.context_processor
@@ -468,7 +390,8 @@ def home():
         employee=Employee.query.filter_by(email=email).first()
         if employee:
             role=employee.role
-            print(role)                  
+            print(role)      
+            
     else:
        
         return redirect(url_for('sign'))
@@ -611,18 +534,7 @@ def home():
                 results['BL'] +=int(form_data[target_field])
                 results['BM'] += int(form_data[actual_field])  
         if results['BM'] != 0 and results['BL'] != 0:  # Check if both BM and BL are not zero
-            if designation == "Intern":
-                results['BN'] = ((results['BM'] / results['BL']) * 30 / 100) * 100
-            elif designation == "Sr.QA Engineer":
-                results['BN'] = ((results['BM'] / results['BL']) * 30 / 100) * 100
-            elif designation == "Jr.QA Engineer":
-                results['BN'] = ((results['BM'] / results['BL']) * 40 / 100) * 100
-            elif designation == "QA Engineer":
-                results['BN'] = ((results['BM'] / results['BL']) * 35 / 100) * 100
-            elif designation == "QA Lead":
-                results['BN'] = ((results['BM'] / results['BL']) * 20 / 100) * 100
-            else:
-                results['BN'] = 0 
+            results['BN'] = ((results['BM'] / results['BL']) * 40 / 100) * 100 
         else:
             results['BN'] = 0     
         if form_data['client_esc'] == 1:  # Check if BG (Client Escalations) is 1
@@ -644,7 +556,7 @@ def home():
             results['BS'] = sum(
                                 results[key] for key in [ 'BN', 'BO', 'BP', 'BQ', 'BR']
                             )
-
+        
         if results['BP']==0:
             results['BN']=0
             results['BO']=0
@@ -843,11 +755,6 @@ def read_excel():
 
 @app.route('/search', methods=['POST'])
 def search_employee():
-    month_order = case(
-        {month: i for i, (month, _) in enumerate(monthsDict_2.items(), 1)},  # Map month names to numeric values (1 for "January", 2 for "February", etc.)
-        value=Target_columns.target_month,  # The month column in your Target_columns table
-        else_=0  # Default value for non-matching months (if any)
-    )
     data = request.json
     employee_name = data.get('employee_name')
     logged_in_user = get_logged_in_user_details()
@@ -894,11 +801,7 @@ def search_employee():
             employee_details = {column.name: getattr(emp, column.name) for column in Employee_information.__table__.columns}
             matched_targets = Target_columns.query.filter(
                 Target_columns.emp_id == emp.emp_id,
-                Target_columns.status == "approved"
-            ).order_by(
-                Target_columns.target_year.desc(),  # Sort by year (latest year first)
-                month_order.desc()# Sort by the mapped numeric month (latest month first)
-                
+                Target_columns.target_month == target_month_string
             ).first()
             if matched_targets:
                 # Update employee details with target values
@@ -1000,14 +903,39 @@ def employee_upload():
             ws = wb.active
             headers = [cell.value for cell in ws[1]]
             column_mapping = {
-                "Employee Name":"emp_name",	
-                "Employee ID":	"emp_id",
-                "Employee Email":"emp_email", 
-                "Today's Date":"emp_date",	
-                "Select your Project":"emp_project",	
-                "Designation":"emp_designation",	 
-                "Lead/Spocs":"reporting_manager",
-                "Reporting manager":"actual_reporting_manager"
+            "Employee Name":"emp_name",	
+            "Employee ID":	"emp_id",
+            "Employee Email":"emp_email", 
+            "Today's Date":"emp_date",	
+            "Select your Project":"emp_project",	
+            "Designation":"emp_designation",	 
+            "Testcase-Creation Target":"test_case_creation_target",
+            "Testcase-Updation Target":	"test_case_updation_target",
+            "Testcase-Execution Target":"test_case_execution_target",	
+            "Defects Found Target":	"defects_found_target",
+            "Issue Verification Target":"defects_verification_target",	
+            "Test-scripts-Creation - Target":"test_scripts_creation_target",
+            "Test-scripts-Updation - Target":"test_scripts_updation_target",	
+            "Test-scripts-Execution - Target":"test_scripts_execution_target",	
+            "Project Documentation - Target":"project_doc_target",	
+            "Internal Review - Target":	"internal_Review_target",
+            "Regression Cycle - Target":"regression_cycle_target",	
+            "Requirement analyzing/writing testcondition - Target":"req_anal_target",
+            "End-End test cases executed - Target":	"end_cases_exec_target",
+            "Site Scrub - Target"	:"site_Scrub_target",
+            "Task Achivement/Coverage score - Target":	"task_coverage_score_target",
+            "Assessment Test score - Target":"assessment_score_target",
+            "Assessment Retest score - Target"	:"assessment_re_score_target",
+            "Certification Test score - Target"	:"cert_score_target",
+            "Certification Retest score - Target":"cert_re_score_target",	
+            "New Features Implemented - Target":"new_features_imp_target",	
+            "Defects Fixed-Target":	"defects_fixed_target",
+            "Enhancements-Target":"enhancements_target",	
+            "Figma Designs-Created-Target":	"fig_desgns_target",
+            "Project Documentation Update-Target":"doc_update_target",
+            "Research-Target":"research_target",	
+            "Reporting Person":"reporting_manager",
+            "Month":"target_month"
             # Add more mappings as per your Excel file
             }
             mapped_columns = {column_mapping[h]: idx for idx, h in enumerate(headers) if h in column_mapping}
@@ -1068,27 +996,27 @@ def employee_upload():
                 
             
                 employee = Employee_information(**employee_data)
-                # emp_id = employee_data['emp_id']
-                # target_month = employee_data['target_month']
-                # target_fields = {key: value for key, value in employee_data.items() if key.endswith('_target')}
-                # existing_target = db.session.query(Target_columns).filter_by(emp_id=emp_id, target_month=target_month).first()
-                # if existing_target:
-                #     # Update the existing record
-                #     for field, value in target_fields.items():
-                #         setattr(existing_target, field, value)
-                #     try:
-                #         db.session.commit()
-                #         flash(f"Updated targets for emp_id '{emp_id}' for the month '{target_month}'.", "success")
-                #     except Exception as e:
-                #         print(e)
-                #         flash(f"Failed to update targets for emp_id '{emp_id}'.", "danger")
-                # else:        
-                #     new_target = Target_columns(
-                #     emp_id=employee_data['emp_id'],
-                #     target_month=employee_data['target_month'],
-                #     **target_fields  # Dynamically add target fields
-                #     )
-                #     db.session.add(new_target)
+                emp_id = employee_data['emp_id']
+                target_month = employee_data['target_month']
+                target_fields = {key: value for key, value in employee_data.items() if key.endswith('_target')}
+                existing_target = db.session.query(Target_columns).filter_by(emp_id=emp_id, target_month=target_month).first()
+                if existing_target:
+                    # Update the existing record
+                    for field, value in target_fields.items():
+                        setattr(existing_target, field, value)
+                    try:
+                        db.session.commit()
+                        flash(f"Updated targets for emp_id '{emp_id}' for the month '{target_month}'.", "success")
+                    except Exception as e:
+                        print(e)
+                        flash(f"Failed to update targets for emp_id '{emp_id}'.", "danger")
+                else:        
+                    new_target = Target_columns(
+                    emp_id=employee_data['emp_id'],
+                    target_month=employee_data['target_month'],
+                    **target_fields  # Dynamically add target fields
+                    )
+                    db.session.add(new_target)
                 # Add the employee record to the session
                 if not name_exists:
                     db.session.add(employee)
@@ -1114,16 +1042,13 @@ def dmax_table():
             session['page_size'] = int(selected_page_size)
         # Redirect to page 1 with the current search term to avoid form resubmission
         return redirect(url_for('dmax_table', page=1, search_term=request.args.get('search_term', '')))
-    # designation_counts = (
-    #     db.session.query(Employee_information.emp_designation, func.count(Employee_information.emp_designation))
-    #     .group_by(Employee_information.emp_designation)
-    #     .all()
-    # )
-    designation_counts = db.session.query(
-            Employee_information.emp_designation, 
-            func.count(Employee_information.emp_designation)
-        )
-    
+    designation_counts = (
+        db.session.query(Employee_information.emp_designation, func.count(Employee_information.emp_designation))
+        .group_by(Employee_information.emp_designation)
+        .all()
+    )
+    labels = [row[0] for row in designation_counts]  # Designation names
+    scores = [row[1] for row in designation_counts]  # Counts
     page_size = session.get('page_size', default_page_size)
     search_term = request.args.get("search_term", "").strip()
     selected_designation=request.args.get("designation")
@@ -1136,22 +1061,15 @@ def dmax_table():
     projects=["Akyrian","Auxo","Avanti","Bench","Fora Travels","Indihood","IPS","IQHive","LevelBlue","Web Development","Opus Clip","Training"]
     designations=["Intern","Jr.QA Engineer","QA Engineer","Sr.QA Engineer","QA Lead"]
     query=Dform.query
-    
     if search_term:
         query = query.filter(func.lower(Dform.employee_name) == search_term.lower())
-        designation_counts = designation_counts.filter(func.lower(Employee_information.emp_name).ilike(f"%{search_term.lower()}%"))
     if selected_designation:
         query=query.filter(Dform.designation == selected_designation)
-        designation_counts = designation_counts.filter(Employee_information.emp_designation == selected_designation)
     if selected_project:
         query = query.filter(func.lower(Dform.project) == selected_project.strip().lower())
-        designation_counts = designation_counts.filter(Employee_information.emp_project == selected_project)
     if selected_month:
         query=query.filter(extract('month', Dform.today_date) == int(selected_month))  
     
-    designation_counts = designation_counts.group_by(Employee_information.emp_designation).all()
-    labels = [row[0] for row in designation_counts]  # Designation names
-    scores = [row[1] for row in designation_counts]  # Counts
     if page_size:  # If 'All' is not selected, paginate based on page size
         paginated_entries = query.paginate(page=page, per_page=page_size, error_out=False)
     else:
@@ -1204,62 +1122,26 @@ def team_dmax_table():
     user_details = get_logged_in_user_details()
     if user_details:
         user_name=user_details['name']
-        user_name=user_name.lower()
         role=user_details['role']
-        selected_month = request.args.get('month')
-        selected_year = request.args.get('year')
-        selected_year = int(selected_year) if selected_year else None
-        
-        current_month = datetime.now().strftime("%m")
-        current_year = datetime.now().strftime("%Y")
-        selected_month_name = monthsDict.get(selected_month)
-        employees_under_projects = []
         if role=="admin" or role=="super_admin":
-            employees_under_manager =Employee_information.query.all()
+            employees_under_manager = Employee_information.query.all()
         if role=="manager":    
-            employees_under_manager = Employee_information.query.filter(func.lower(Employee_information.reporting_manager)==user_name).all()
-        projects_led_by_user = ProjectTargets.query.filter(func.lower(ProjectTargets.Lead)==user_name).all()
-        employees_under_actual_approval_manager=Employee_information.query.filter(func.lower(Employee_information.actual_reporting_manager)==user_name).all()
-        if projects_led_by_user:
-            # If the user is a lead, find all employees working on the same project
-            for project in projects_led_by_user:
-                employees_in_project = Employee_information.query.filter_by(emp_project=project.Project).all()
-                employees_under_projects.extend(employees_in_project)
-        user_manager  = ProjectTargets.query.filter(func.lower(ProjectTargets.ApprovalManager)==user_name).all()
-        if user_manager:
-            for project in user_manager:
-                employees_in_project = Employee_information.query.filter_by(emp_project=project.Project).all()
-                employees_under_projects.extend(employees_in_project)
-        all_accessible_employees = {emp.emp_email: emp for emp in employees_under_manager + employees_under_projects  + employees_under_actual_approval_manager}.values()
-
-        approved_targets = Target_columns.query.filter(
-                    Target_columns.emp_id.in_([emp.emp_id for emp in all_accessible_employees]),  # Only check targets for managed employees
-                    Target_columns.target_month == selected_month_name,
-                    Target_columns.target_year == selected_year,
-                    Target_columns.status == "approved"
-                ).all()    
-        employees_with_approved_targets = set(target.emp_id for target in approved_targets)
-        
+            employees_under_manager = Employee_information.query.filter_by(reporting_manager=user_name).all()
         filtered_employees = []
-        for emp in all_accessible_employees:
+        for emp in employees_under_manager:
+            matched_employee = Employee_information.query.filter_by(emp_email=emp.emp_email).first()
+            if matched_employee:
                 filtered_employees.append({
-                    "name": emp.emp_name,
-                    "project":emp.emp_project,
-                    "designation":emp.emp_designation,
-                    "date":emp.emp_date,
-                    "emp_id":emp.emp_id,
-                    "reporting_manager":emp.reporting_manager,
-                    "actual_reporting_manager":emp.actual_reporting_manager,
-                    "id":emp.id,
-                    "role": (
-                                "Project Lead" if emp.emp_project in [proj.Project for proj in projects_led_by_user]
-                                else ("Approval Manager" if emp.emp_project in [proj.Project for proj in user_manager]
-                                else "Employee")
-                            ) , # Determine role,
-                    "has_approved_target": (emp.emp_id in employees_with_approved_targets) if employees_with_approved_targets else False  # Store whether they have an approved target        
-                                        })
+                    "name": matched_employee.emp_name,
+                    "project":matched_employee.emp_project,
+                    "designation":matched_employee.emp_designation,
+                    "date":matched_employee.emp_date,
+                    "emp_id":matched_employee.emp_id,
+                    "reporting_manager":matched_employee.reporting_manager,
+                    "id":matched_employee.id
+                })
                 
-        return render_template('team_dmax_table.html',employees=filtered_employees,user_name=user_name,years=last_ten_years,selected_month=selected_month, current_month=current_month,monthsDict=monthsDict,current_year=current_year,selected_year=selected_year,selected_month_name=selected_month_name)
+        return render_template('team_dmax_table.html',employees=filtered_employees,user_name=user_name)
     
     return "No user found or not logged in."  
 
@@ -1267,12 +1149,9 @@ def team_dmax_table():
 def view_dscore():
     user_name = get_logged_in_user_details()
     ALLOWED_COLUMNS = [
-        "id","employee_name","target", "actual", "production","project",
-        "quality", "attendance", "skill", "new_initiatives", "Dmax_score","att"
+        "id","employee_name","target", "actual", "production",
+        "quality", "attendance", "skill", "new_initiatives", "Dmax_score"
     ]
-    current_year=datetime.now().year
-    
-    years = [current_year - i for i in range(11)]
     # ALLOWED_COLUMNS = [
     #     "employee_name", "today_date", "test_case_creation_target",
     #     "test_case_creation_actual", "test_case_updation_target", "test_case_updation_actual",
@@ -1300,7 +1179,6 @@ def view_dscore():
         search_query = request.args.get('search', '').strip().lower()
         selected_date = request.args.get('date') 
         selected_month = request.args.get('month')
-        selected_year=request.args.get('year',current_year)
         
         if role =="manager":    
             employees_under_manager = Employee_information.query.filter(func.lower(Employee_information.reporting_manager)==user_name).all()
@@ -1310,8 +1188,7 @@ def view_dscore():
                     Dform.query.filter_by(employee_email=emp.emp_email),
                     search_query,
                     selected_month,
-                    selected_date,
-                    selected_year
+                    selected_date
                 )
                 # query = Dform.query.filter_by(employee_email=emp.emp_email)
                 # if search_query:
@@ -1335,23 +1212,21 @@ def view_dscore():
                     #     )
                     averages = get_averages_for_filtered_employees(matched_employees)
                     if averages:
-                        
+                        print(emp.emp_name,averages)
                         filtered_employees.append(
-                        {  "id": emp.id,
-                            "employee_id": emp.emp_id,
+                        {   "id":emp.id,
                             "employee_name": emp.emp_name,
-                            "target": averages["avg_target"],  # ✅ Correct way to access dictionary values
-                            "actual": averages["avg_actual"],
-                            "production": averages["avg_production"],
-                            "quality": averages["avg_quality"],
-                            "attendance": averages["avg_attendance"],
-                            "skill": averages["avg_skill"],
-                            "new_initiatives": averages["avg_new_initiatives"],
-                            "Dmax_score": averages["avg_Dmax_score"],
-                            "project":emp.emp_project
+                            "target": averages.avg_target,
+                            "actual": averages.avg_actual,
+                            "production": averages.avg_production,
+                            "quality": averages.avg_quality,
+                            "attendance": averages.avg_attendance,
+                            "skill": averages.avg_skill,
+                            "new_initiatives": averages.avg_new_initiatives,
+                            "Dmax_score": averages.avg_Dmax_score
                         }
                         )
-            return render_template("view_dscore.html",employees=filtered_employees,role=role,search_query=search_query, selected_month=selected_month, selected_date=selected_date,selected_year=int(selected_year),years=years)        
+            return render_template("view_dscore.html",employees=filtered_employees,role=role,search_query=search_query, selected_month=selected_month, selected_date=selected_date)        
 
         if role=="crewmate":
              
@@ -1359,34 +1234,30 @@ def view_dscore():
                 Dform.query.filter_by(employee_email=email),
                 search_query,
                 selected_month,
-                selected_date,
-                selected_year
+                selected_date
             )
             filtered_employees=[]
             if matched_employees:
                 first_entry = matched_employees.first()
-                if first_entry:
-                    averages = get_averages_for_filtered_employees(matched_employees)  # Compute averages ONCE
-                    if averages:
-                        filtered_employees.append(
-                            {
-                                "id": first_entry.id if first_entry else None,  # No employee ID needed for crewmates, or use an appropriate field
-                                "employee_name": first_entry.employee_name,
-                                "employee_id": first_entry.employee_id,  # Assuming email identifies the crewmate
-                                "target": averages["avg_target"],  # ✅ Correct way to access dictionary values
-                                "actual": averages["avg_actual"],
-                                "production": averages["avg_production"],
-                                "quality": averages["avg_quality"],
-                                "attendance": averages["avg_attendance"],
-                                "skill": averages["avg_skill"],
-                                "new_initiatives": averages["avg_new_initiatives"],
-                                "Dmax_score": averages["avg_Dmax_score"],
-                                "project":first_entry.project
-                            }
-                        )
+                averages = get_averages_for_filtered_employees(matched_employees)  # Compute averages ONCE
+                if averages:
+                    filtered_employees.append(
+                        {
+                            "id": first_entry.id if first_entry else None,  # No employee ID needed for crewmates, or use an appropriate field
+                            "employee_name": first_entry.employee_name,  # Assuming email identifies the crewmate
+                            "target": averages.avg_target,
+                            "actual": averages.avg_actual,
+                            "production": averages.avg_production,
+                            "quality": averages.avg_quality,
+                            "attendance": averages.avg_attendance,
+                            "skill": averages.avg_skill,
+                            "new_initiatives": averages.avg_new_initiatives,
+                            "Dmax_score": averages.avg_Dmax_score
+                        }
+                    )
                     
 
-            return render_template("view_dscore.html",employees=filtered_employees,role=role,search_query=search_query, selected_month=selected_month, selected_date=selected_date,selected_year=int(selected_year),years=years)                
+            return render_template("view_dscore.html",employees=filtered_employees,role=role,search_query=search_query, selected_month=selected_month, selected_date=selected_date)                
                 
         if role == "admin" or role == "super_admin":
             employees_under_manager = Employee_information.query.all()  # Get all employees under the manager
@@ -1398,33 +1269,29 @@ def view_dscore():
                     Dform.query.filter_by(employee_email=emp.emp_email),  # Filter by the employee's email
                     search_query,
                     selected_month,
-                    selected_date,
-                    selected_year
+                    selected_date
                 )
-                
                 # If matched employees exist, calculate averages
                 if matched_employees:
                     averages = get_averages_for_filtered_employees(matched_employees)
                     
                     # If averages are found, append to the filtered employees list
                     if averages:
-                         # Debugging line to check the results
+                        print(emp.emp_name, averages)  # Debugging line to check the results
 
                         # Append the employee data with averages to the result list
                         filtered_employees.append(
                             {
                                 "id": emp.id,  # Employee ID
                                 "employee_name": emp.emp_name,  # Employee's name
-                                "employee_id": emp.emp_id,
-                                "target": averages["avg_target"],  # ✅ Correct way to access dictionary values
-                                "actual": averages["avg_actual"],
-                                "production": averages["avg_production"],
-                                "quality": averages["avg_quality"],
-                                "attendance": averages["avg_attendance"],
-                                "skill": averages["avg_skill"],
-                                "new_initiatives": averages["avg_new_initiatives"],
-                                "Dmax_score": averages["avg_Dmax_score"],
-                                "project":emp.emp_project
+                                "target": averages.avg_target,  # Averaged target
+                                "actual": averages.avg_actual,  # Averaged actual
+                                "production": averages.avg_production,  # Averaged production
+                                "quality": averages.avg_quality,  # Averaged quality
+                                "attendance": averages.avg_attendance,  # Averaged attendance
+                                "skill": averages.avg_skill,  # Averaged skill
+                                "new_initiatives": averages.avg_new_initiatives,  # Averaged new initiatives
+                                "Dmax_score": averages.avg_Dmax_score  # Averaged Dmax score
                             }
                         )
 
@@ -1443,7 +1310,7 @@ def view_dscore():
             #                     for column in ALLOWED_COLUMNS         # Filter by allowed columns
             #                 }
             #             )
-            return render_template("view_dscore.html", employees=filtered_employees, role=role, search_query=search_query, selected_month=selected_month, selected_date=selected_date,selected_year=int(selected_year),years=years)
+            return render_template("view_dscore.html", employees=filtered_employees, role=role, search_query=search_query, selected_month=selected_month, selected_date=selected_date)
 
 @app.route('/delete_employee/<int:id>', methods=['POST'])
 def delete_employee(id):
@@ -1515,409 +1382,41 @@ def operational_excellence(emp_id):
             
     return render_template('operational_excellence.html',emp_id=emp_id,months_dict=monthsDict)
 
-@app.route("/full_table_view/<string:id>", methods=['GET'])
+@app.route("/full_table_view/<int:id>")
 def full_table_view(id):
-    project=request.args.get('project')
-    
-    base_query = Dform.query.filter_by(employee_id=id)
-    current_year=datetime.now().year
-    selected_date = request.args.get('date')
-    current_month = datetime.now().strftime("%m")
-    
-    selected_month = request.args.get('month')
-    
-    selected_month_name = monthsDict.get(selected_month)
-    
-    
-     
-    selected_year = request.args.get('year', current_year)
-    filtered_query=get_first_filtered_employees(base_query, None, selected_month, selected_date, selected_year)
-    employee = filtered_query.all() 
-    if request.args.get('download_excel') == '1':
-        return generate_excel_from_template(employee)
-    years = [current_year - i for i in range(11)]
-    selected_year=request.args.get('year',current_year)
-    CATEGORY_TO_COLUMNS = {
-        "Testcase Creation": [
-            "test_case_creation_target", "test_case_creation_actual"
-        ],
-        "Testcase Updation": [
-            "test_case_updation_target", "test_case_updation_actual"
-        ],
-        "Testcase Execution": [
-            "test_case_execution_target", "test_case_execution_actual"
-        ],
-        "Defects (5/day)": [
-            "defects_found_target", "defects_found_actual"
-        ],
-        "Issue Verification": [
-            "defects_verification_target", "defects_verification_actual"
-        ],
-        "Testscripts Creation": [
-            "test_scripts_creation_target", "test_scripts_creation_actual"
-        ],
-        "Testscripts Updation": [
-            "test_scripts_updation_target", "test_scripts_updation_actual"
-        ],
-        "Testscripts Execution": [
-            "test_scripts_execution_target", "test_scripts_execution_actual"
-        ],
-        "Site Scrub": [
-            "site_Scrub_target", "site_Scrub_actual"
-        ],
-        "Project Documentation": [
-            "project_doc_target", "project_doc_actual"
-        ],
-        "Internal review":[
-            "internal_Review_target", "internal_Review_actual"
-        ],
-        "Regression cycle":[
-            "regression_cycle_target", "regression_cycle_actual"
-        ],
-        "Requirement analyzing/writing testcondition":[
-            "regression_cycle_target", "regression_cycle_actual"
-        ],
-        "End-End test cases executed":[
-            "end_cases_exec_target", "end_cases_exec_actual"
-        ],
-        "Task Achivement/Coverage score":[
-            "task_coverage_score_target","task_coverage_score_actual"
-        ],
-        "Assessment Test score":[
-           "assessment_score_target","assessment_score_actual" 
-        ],
-        "Assessment Retest score":[
-          "assessment_re_score_target","assessment_re_score_actual"  
-        ],
-        "Certification Test score":[
-           "cert_score_target","cert_score_actual" 
-        ],
-        "Certification Retest score":[
-           "cert_re_score_target","cert_re_score_actual" 
-        ],   
-        "New Features Implemented":[
-           "new_features_imp_target","new_features_imp_actual" 
-        ],   
-        "New Features Implemented":[
-           "new_features_imp_target","new_features_imp_actual" 
-        ], 
-        "Defects Fixed":[
-            "defects_fixed_target","defects_fixed_actual"
-        ],
-        "Enhancements Target":[
-            "enhancements_target","enhancements_actual"
-        ],
-        "Figma Designs Created": [
-            "fig_desgns_target", "fig_desgns_actual"
-        ],
-        "Project Documentation Updation": [
-            "doc_update_target", "doc_update_actual"
-        ],
-        "Research": [
-            "research_target", "research_actual"
-        ]
-        # Add other mappings here as needed
-    }
-    PROJECT_SELECTION = {
-            "Akyrian": [
-                "Testcase Creation",  # Only these categories should be included
-                "Testcase Updation",
-                "Testcase Execution",
-                "Defects (5/day)",
-                "Issue Verification",
-                "Testscripts Creation",
-                "Testscripts Updation",
-                "Testscripts Execution",
-                "Site Scrub",
-                "Project Documentation",
-                "Internal review",
-                "Regression cycle",
-                "Requirement analyzing/writing testcondition",
-                "End-End test cases executed"
-            ],
-            "Auxo": [
-                "Testcase Creation",  # Only these categories should be included
-                "Testcase Updation",
-                "Testcase Execution",
-                "Defects (5/day)",
-                "Issue Verification",
-                "Testscripts Creation",
-                "Testscripts Updation",
-                "Testscripts Execution",
-                "Site Scrub",
-                "Project Documentation",
-                "Internal review",
-                "Regression cycle",
-                "Requirement analyzing/writing testcondition",
-                "End-End test cases executed"
-            ],
-            "Avanti": [
-                "Testcase Creation",  # Only these categories should be included
-                "Testcase Updation",
-                "Testcase Execution",
-                "Defects (5/day)",
-                "Issue Verification",
-                "Site Scrub",
-                "Project Documentation",
-                "Internal review",
-                "Regression cycle",
-                "Requirement analyzing/writing testcondition",
-                "End-End test cases executed"
-            ],
-            "Bench" :[
-                "Task Achivement/Coverage score",  # Only these categories should be included
-                "Assessment Test score",
-                "Assessment Retest score",
-                "Certification Test score",
-                "Certification Retest score"
-            ],
-            "Fora Travels": [
-                "Testcase Creation",  # Only these categories should be included
-                "Testcase Updation",
-                "Testcase Execution",
-                "Defects (5/day)",
-                "Issue Verification",
-                "Testscripts Creation",
-                "Testscripts Updation",
-                "Testscripts Execution",
-                "Site Scrub",
-                "Project Documentation",
-                "Internal review",
-                "Regression cycle",
-                "Requirement analyzing/writing testcondition",
-                "End-End test cases executed"
-            ],
-            "Indihood": [
-                "Testcase Creation",  # Only these categories should be included
-                "Testcase Updation",
-                "Testcase Execution",
-                "Defects (5/day)",
-                "Issue Verification",
-                "Testscripts Creation",
-                "Testscripts Updation",
-                "Testscripts Execution",
-                "Site Scrub",
-                "Project Documentation",
-                "Internal review",
-                "Regression cycle",
-                "Requirement analyzing/writing testcondition",
-                "End-End test cases executed"
-            ],
-            "IPS":[
-                "Testcase Creation",  # Only these categories should be included
-                "Testcase Updation",
-                "Testcase Execution",
-                "Defects (5/day)",
-                "Issue Verification",
-                "Testscripts Creation",
-                "Testscripts Updation",
-                "Testscripts Execution",
-                "Site Scrub",
-                "Project Documentation",
-                "Internal review",
-                "Regression cycle",
-                "Requirement analyzing/writing testcondition",
-                "End-End test cases executed"
-            ],
-            "IQHive":[
-                "Testcase Creation",  # Only these categories should be included
-                "Testcase Updation",
-                "Testcase Execution",
-                "Defects (5/day)",
-                "Issue Verification",
-                "Testscripts Creation",
-                "Testscripts Updation",
-                "Testscripts Execution",
-                "Site Scrub",
-                "Project Documentation",
-                "Internal review",
-                "Regression cycle",
-                "Requirement analyzing/writing testcondition",
-                "End-End test cases executed"
-            ],
-            "IQHive":[
-                "Testcase Creation",  # Only these categories should be included
-                "Testcase Updation",
-                "Testcase Execution",
-                "Defects (5/day)",
-                "Issue Verification",
-                "Testscripts Creation",
-                "Testscripts Updation",
-                "Testscripts Execution",
-                "Site Scrub",
-                "Project Documentation",
-                "Internal review",
-                "Regression cycle",
-                "Requirement analyzing/writing testcondition",
-                "End-End test cases executed"
-            ],
-            "LevelBlue":[
-                "Testcase Creation",  # Only these categories should be included
-                "Testcase Updation",
-                "Testcase Execution",
-                "Defects (5/day)",
-                "Issue Verification",
-                "Testscripts Creation",
-                "Testscripts Updation",
-                "Testscripts Execution",
-                "Site Scrub",
-                "Project Documentation",
-                "Internal review",
-                "Regression cycle",
-                "Requirement analyzing/writing testcondition",
-                "End-End test cases executed"
-            ],
-            "Web Development":[
-                "New Features Implemented",
-                "Defects Fixed",
-                "Enhancements Target",
-                "Figma Designs Created",
-                "Project Documentation Updation",
-                "Research"
-            ],
-            "Opus Clip":[
-                "Testcase Creation",  # Only these categories should be included
-                "Testcase Updation",
-                "Testcase Execution",
-                "Defects (5/day)",
-                "Issue Verification",
-                "Site Scrub",
-                "Project Documentation",
-                "Internal review",
-                "Regression cycle",
-                "Requirement analyzing/writing testcondition",
-                "End-End test cases executed"
-            ],
-            "Bench" :[
-                "Task Achivement/Coverage score",  # Only these categories should be included
-                "Assessment Test score",
-                "Assessment Retest score",
-                "Certification Test score",
-                "Certification Retest score"
-            ]
-
-            # Add more projects with specific selections here
-        }
-    TABLE_HEADERS = {
-        "Production": {
-            "Testcase Creation": ["Target", "Actual"],
-            "Testcase Updation": ["Target", "Actual"],
-            "Testcase Execution": ["Target", "Actual"],
-            "Defects (5/day)": ["Target", "Actual"],
-            "Issue Verification": ["Target", "Actual"],
-            "Testscripts Creation": ["Target", "Actual"],
-            "Testscripts Execution": ["Target", "Actual"],
-            "Testscripts Updation": ["Target", "Actual"],
-            "Project Documentation": ["Target", "Actual"],
-            "Internal review": ["Target", "Actual"],
-            "Regression cycle": ["Target", "Actual"],
-            "Requirement analyzing/writing testcondition": ["Target", "Actual"],
-            "End-End test cases executed": ["Target", "Actual"],
-            "Site Scrub": ["Target", "Actual"],
-            "Task Achivement/Coverage score": ["Target", "Actual"],
-            "Assessment Test score": ["Target", "Actual"],
-            "Assessment Retest score": ["Target", "Actual"],
-            "Certification Test score": ["Target", "Actual"],
-            "Certification Retest score": ["Target", "Actual"],
-            "New Features Implemented": ["Target", "Actual"],
-            "Defects Fixed": ["Target", "Actual"],
-            "Enhancements Target": ["Target", "Actual"],
-            "Figma Designs Created": ["Target", "Actual"],
-            "Project Documentation Updation": ["Target", "Actual"],
-            "Research": ["Target", "Actual"]
-        },
-        "Quality": {
-            "No. of invalid defects": None,
-            "Spelling/Typo errors": None,
-            "Client escalations": None,
-            "Testcase missing": None,
-        },
-        "Attendance": None,
-        "Skill": None,
-        "New initiatives":None,
-        "Production%":{
-            "Target": None,
-            "Actual": None,
-            "production %": None,
-        },
-        
-        "Quality%": None,
-        
-        "attendance":None,
-        "Skill (%)":None,
-        "new initiatives(%)":None,
-        "Dmax score":None
-    }
-    selected_categories = PROJECT_SELECTION.get(project, [])
-    if project in PROJECT_SELECTION:
-    # Get the production headers
-        production_headers = TABLE_HEADERS.get("Production", {})
-        for category in list(production_headers.keys()):
-            if category not in selected_categories:
-                # Remove the unwanted category
-                del production_headers[category]
-
-    
-    # Only keep the categories that are selected for this project
-    
-    allowed_columns=[]
-    # for category in selected_categories:
-    #     if category in CATEGORY_TO_COLUMNS:
-    #         allowed_columns.extend(CATEGORY_TO_COLUMNS[category])
-    # print(allowed_columns)        
-    
+    employee = Dform.query.filter_by(id=id).first()
     ALLOWED_COLUMNS = [
         "employee_name", "today_date", "test_case_creation_target",
         "test_case_creation_actual", "test_case_updation_target", "test_case_updation_actual",
         "test_case_execution_target", "test_case_execution_actual", "defects_found_target",
         "defects_found_actual","defects_verification_target", "defects_verification_actual", "test_scripts_creation_target", "test_scripts_creation_actual",
         "test_scripts_execution_target","test_scripts_execution_actual","test_scripts_updation_target", "test_scripts_updation_actual",
-         "project_doc_target","project_doc_actual","internal_Review_target", "internal_Review_actual",
-        
-          "regression_cycle_target","regression_cycle_actual","req_anal_target", "req_anal_actual",
-          "end_cases_exec_target","end_cases_exec_actual","site_Scrub_target", "site_Scrub_actual",
-         "task_coverage_score_target", "task_coverage_score_actual","assessment_score_target", "assessment_score_actual",
-          "assessment_re_score_target","assessment_re_score_actual","cert_score_target", "cert_score_actual","cert_re_score_target","cert_re_score_actual",
-           "new_features_imp_target", "new_features_imp_actual","defects_fixed_target", "defects_fixed_actual",
-           "enhancements_target", "enhancements_actual", "fig_desgns_target", "fig_desgns_actual","doc_update_target", "doc_update_actual",
-           "research_target", "research_actual",
-          "inv_defs",  "spel_errors",  "client_esc", "tst_cases_missing","att","skill","new_initiatives",
-          "target","actual","production","quality","attendance","skill","new_initiatives","Dmax_score"
-            
-        # #     
-        # ,"Dmax_score",new_init
-        # "quality", "attendance", "skill",  
+        # # "site_Scrub_target", "site_Scrub_actual", "project_doc_target",
+        # # "project_doc_actual", "internal_Review_target", "internal_Review_actual", "regression_cycle_target",
+        # # "regression_cycle_actual", "req_anal_target", "req_anal_actual", "end_cases_exec_target",
+        # # "end_cases_exec_actual", "task_coverage_score_target", "task_coverage_score_actual",
+        # # "assessment_score_target", "assessment_score_actual", "assessment_re_score_target",
+        # # "assessment_re_score_actual", "cert_score_target", "cert_score_actual", "cert_re_score_target",
+        # # "cert_re_score_actual", "new_features_imp_target", "new_features_imp_actual", "defects_fixed_target",
+        # # "defects_fixed_actual", "enhancements_target", "enhancements_actual", "fig_desgns_target",
+        # # "fig_desgns_actual", "doc_update_target", "doc_update_actual", "research_target", "research_actual",
+        "inv_defs",  "spel_errors",  "client_esc", "tst_cases_missing", "attendance","target","actual","production","quality","attendance","skill","new_initiatives","Dmax_score"
+        # "quality", "attendance", "skill", "new_initiatives", "Dmax_score"
     ]
-    core_columns = [
-        "employee_name", "today_date","inv_defs",  "spel_errors",  "client_esc", "tst_cases_missing","att","skill","new_initiatives",
-          "target","actual","production","quality","attendance","skill","new_initiatives","Dmax_score"
-    ]
-    filtered_columns = []
-    for column in ALLOWED_COLUMNS:
-        if column in core_columns:
-            filtered_columns.append(column)
-            continue  # Skip to the next column
-
-        for category in selected_categories:
-            if category in CATEGORY_TO_COLUMNS:
-                if column in CATEGORY_TO_COLUMNS[category]:  
-                    filtered_columns.append(column)
-    print(filtered_columns)                
     if employee:
-        return render_template("full_table_view.html", employee=employee, ALLOWED_COLUMNS=filtered_columns,TABLE_HEADERS=TABLE_HEADERS,years=years,selected_year=int(selected_year),selected_date=selected_date,monthsDict=monthsDict,current_month=current_month,selected_month=selected_month,project=project)
-    return "No data found"
-    
+        return render_template("full_table_view.html", employee=employee, ALLOWED_COLUMNS=ALLOWED_COLUMNS)
+
 @app.route('/approve_users')
 def approve_users():
     pending_users = Employee.query.filter_by(is_approved=False).all()
-    approved_users=Employee.query.filter_by(is_approved=True).all()
-    return render_template('approve_users.html', pending_users=pending_users,approved_users=approved_users)
+    return render_template('approve_users.html', pending_users=pending_users)
 
 @app.route('/approve_selected', methods=['POST'])
 def approve_selected():
     print("Approving selected users")
     data = request.get_json()
     emp_ids = data.get('emp_ids', [])
+    print(emp_ids)
     if not emp_ids:
         return jsonify({"success": False, "message": "No users selected"}), 400
 
@@ -1933,488 +1432,259 @@ def approve_selected():
         
 @app.route('/form_bulk_upload', methods=['GET','POST'])
 def form_bulk_upload():
-    
-    # field_to_column = {
-    #         "employee_name": 'A',
-    #         "employee_id": 'B',
-    #         "employee_email": 'C',
-    #         "today_date": 'D',
-    #         "project": 'E',
-    #         "designation": 'F',
-    #         "test_case_creation_target": 'G',
-    #         "test_case_creation_actual": 'H',
-    #         "test_case_updation_target": 'I',
-    #         "test_case_updation_actual": 'J',
-    #         "test_case_execution_target": 'K',
-    #         "test_case_execution_actual": 'L',
-    #         "defects_found_target":'M',
-    #         "defects_found_actual":'N',
-    #         "defects_verification_target":'O',
-    #         "defects_verification_actual":'P',
-    #         "test_scripts_creation_target":'Q',
-    #         "test_scripts_creation_actual":'R',
-    #         "test_scripts_updation_target":'S',
-    #         "test_scripts_updation_actual":'T',
-    #         "test_scripts_execution_target":'U',
-    #         "test_scripts_execution_actual":'V',
-    #         "site_Scrub_target":'AG',
-    #         "site_Scrub_actual":'AH',
-    #         "project_doc_target":'W',
-    #         "project_doc_actual":'X',
-    #         "internal_Review_target":'Y',
-    #         "internal_Review_actual":'Z',
-    #         "regression_cycle_target":'AA',
-    #         "regression_cycle_actual":'AB',
-    #         "req_anal_target":'AC',
-    #         "req_anal_actual":'AD',
-    #         "end_cases_exec_target":'AE',
-    #         "end_cases_exec_actual":'AF',
-    #         "task_coverage_score_target":'AI',
-    #         "task_coverage_score_actual":'AJ',
-    #         "assessment_score_target":'AK',
-    #         "assessment_score_actual":'AL',
-    #         "assessment_re_score_target":'AM',
-    #         "assessment_re_score_actual":'AN',
-    #         "cert_score_target":"AO",
-    #         "cert_score_actual":'AP',
-    #         "cert_re_score_target":'AQ',
-    #         "cert_re_score_actual":'AR',
-    #         "new_features_imp_target":'AS',
-    #         "new_features_imp_actual":'AT',
-    #         "defects_fixed_target":'AU',
-    #         "defects_fixed_actual":'AV',
-    #         "enhancements_target":'AW',
-    #         "enhancements_actual":'AX',
-    #         "fig_desgns_target":'AY',
-    #         "fig_desgns_actual":'AZ',
-    #         "doc_update_target":'BA',
-    #         "doc_update_actual":'BB',
-    #         "research_target":'BC',
-    #         "research_actual":'BD',
-    #         "inv_defs":'BE',
-    #         "spel_errors":'BF',
-    #         "client_esc":'BG',
-    #         "tst_cases_missing":'BH',
-    #         "att":'BI',
-    #         "dtouch":'BJ',
-    #         "new_init":'BK',  
-    #         "target":'BL' 
-    #     }
-    # actual_to_target_mapping = {}
-
-    # for key in field_to_column.keys():
-    #     if key.endswith('_actual'):
-    #         target_key = key.replace('_actual', '_target')  # Replace '_actual' with '_target'
-    #         if target_key in field_to_column:  # Check if target_key exists
-    #             actual_to_target_mapping[key] = target_key
-    # if request.method == 'POST':
-    #     file = request.files['file']
-    #     wb = load_workbook(file, data_only=True)
-    #     ws=wb.active
-    #     data_list = []
-
-    #     for row in ws.iter_rows(min_row=3, values_only=True):  # Skip header row
-    #         row_data = {}
-    #         for field, column in field_to_column.items():
-    #             col_index = openpyxl.utils.column_index_from_string(column) - 1
-    #             row_data[field] = row[col_index] if col_index < len(row) else None
-                
-    #             designation = row_data.get("designation", "")
-    #             attendance_input = row_data.get("att", 0)
-    #             if designation == "Intern":
-    #                 attendance = int((attendance_input * 10 / 100) * 100)
-    #             elif designation == "Jr.QA Engineer":
-    #                 attendance = int((attendance_input * 10 / 100) * 100)
-    #             elif designation == "QA Engineer":   
-    #                 attendance = int((attendance_input * 5 / 100) * 100) 
-    #             elif designation=="Sr.QA Engineer":
-    #                 attendance = int((attendance_input * 5 / 100) * 100)
-    #             elif designation=="QA Lead":
-    #                 attendance = int((attendance_input * 5 / 100) * 100)  
-    #             else:
-    #                 attendance = 0    
-    #             row_data["attendance"] = attendance
-    #             row_data["target"] = 0
-    #             row_data["actual"] = 0
-    #         if all(value not in (None, "") for value in row_data.values()):  
-    #             data_list.append(row_data)
-    #     for row_data in data_list:
-    #         # Fetch operational excellence details for each employee
-    #         operational_excellence = OperationalExcellence.query.filter_by(emp_id=row_data.get("employee_id")).first()
-            
-    #         if operational_excellence and operational_excellence.start_date and operational_excellence.end_date:
-    #             # Convert start_date and end_date to datetime objects
-    #             start_date = datetime.strptime(operational_excellence.start_date, "%Y-%m-%d")
-    #             end_date = datetime.strptime(operational_excellence.end_date, "%Y-%m-%d")
-
-    #             # Convert 'today_date' in row_data to a datetime object (ensure the field exists)
-    #             today_date_str = row_data.get('today_date', '')
-    #             print("today_date_str",today_date_str)
-    #             print("start_date",start_date)
-    #             print("end_date",end_date)
-    #             if today_date_str:
-    #                 if isinstance(today_date_str, str):  # Check if it's a string
-    #                     today_date = datetime.strptime(today_date_str, "%Y-%m-%d")
-    #                 else:
-    #                     today_date = today_date_str
-
-    #                 # Check if today_date is within the operational excellence date range
-    #                 if start_date <= today_date <= end_date:
-    #                     # Update the skill and new_initiatives in the row_data
-    #                     row_data['skill'] = operational_excellence.dtouch_score
-    #                     row_data['new_initiatives'] = operational_excellence.new_init_score
-    #                     print("startdate", start_date, "enddate", end_date, "today_date", today_date)
-    #                 else:
-    #                     # If today's date is not in the range, set default values
-    #                     row_data['skill'] = 0
-    #                     row_data['new_initiatives'] = 0
-    #             else:
-    #                 # Handle case where 'today_date' is missing or invalid
-    #                 row_data['skill'] = 0
-    #                 row_data['new_initiatives'] = 0
-    #         else:
-    #             # If no operational excellence record is found, set default values
-    #             row_data['skill'] = 0
-    #             row_data['new_initiatives'] = 0
-            
-    #         if row_data.get('client_esc', 0) == 1:  # Check if BG (Client Escalations) is 1
-    #             row_data['quality'] = 0  # Set quality to 0 if BG is 1
-    #         else:
-    #             sum_invalid_defects_to_test_cases = (
-    #                 row_data.get('inv_defs', 0) +  # BE: Invalid Defects
-    #                 row_data.get('spel_errors', 0) +  # BF: Spelling Errors
-    #                 row_data.get('client_esc', 0) +  # BG: Client Escalations
-    #                 row_data.get('tst_cases_missing', 0)  # BH: Test Cases Missing
-    #             )       
-    #             row_data['quality'] = ((100 - sum_invalid_defects_to_test_cases) * 0.4 / 100) * 100
-            
-    #         for actual_field, target_field in actual_to_target_mapping.items():
-    #             for row in data_list: 
-    #                 if actual_field in row and row[actual_field] is not None and row[actual_field] > 0:
-    #                     row['target'] += int(row.get(target_field, 0))  # Use .get() to avoid KeyError
-    #                     row['actual'] += int(row.get(actual_field, 0))  
-
-    #                 if row['target'] != 0 and row['actual'] != 0:  
-    #                     row['production'] = ((row['actual'] / row['target']) * 40 / 100) *100
-    #                 else:
-    #                     row['production'] = 0   
-    #         row_data['Dmax_score'] = sum([
-    #             row_data.get('production', 0),
-    #             row_data.get('quality', 0),
-    #             row_data.get('attendance', 0),
-    #             row_data.get('new_initiatives', 0),
-    #             row_data.get('skill', 0)
-    #         ])      
-    #         if row_data["attendance"]==0:      
-    #             row_data['Dmax_score'] =0
-    #             row_data['production'] =0
-    #             row_data['quality'] =0
-            
-    #         new_entry = Dform(
-    #         employee_name=row_data['employee_name'],
-    #         employee_id=row_data['employee_id'],
-    #         employee_email=row_data['employee_email'],
-    #         today_date=row_data['today_date'],
-    #         project=row_data['project'],
-    #         designation=row_data['designation'],
-    #         test_case_creation_target=row_data.get('test_case_creation_target'),
-    #         test_case_creation_actual=row_data.get('test_case_creation_actual'),
-    #         test_case_updation_target=row_data.get('test_case_updation_target'),
-    #         test_case_updation_actual=row_data.get('test_case_updation_actual'),
-    #         test_case_execution_target=row_data.get('test_case_execution_target'),
-    #         test_case_execution_actual=row_data.get('test_case_execution_actual'),
-    #         defects_found_target=row_data.get('defects_found_target'),
-    #         defects_found_actual=row_data.get('defects_found_actual'),
-    #         test_scripts_creation_target=row_data.get('test_scripts_creation_target'),
-    #         test_scripts_creation_actual=row_data.get('test_scripts_creation_actual'),
-    #         test_scripts_updation_target=row_data.get('test_scripts_updation_target'),
-    #         test_scripts_updation_actual=row_data.get('test_scripts_updation_actual'),
-    #         test_scripts_execution_target=row_data.get('test_scripts_execution_target'),
-    #         test_scripts_execution_actual=row_data.get('test_scripts_execution_actual'),
-    #         site_Scrub_target=row_data.get('site_Scrub_target'),
-    #         site_Scrub_actual=row_data.get('site_Scrub_actual'),
-    #         project_doc_target=row_data.get('project_doc_target'),
-    #         project_doc_actual=row_data.get('project_doc_actual'),
-    #         internal_Review_target=row_data.get('internal_Review_target'),
-    #         internal_Review_actual=row_data.get('internal_Review_actual'),
-    #         regression_cycle_target=row_data.get('regression_cycle_target'),
-    #         regression_cycle_actual=row_data.get('regression_cycle_actual'),
-    #         req_anal_target=row_data.get('req_anal_target'),
-    #         req_anal_actual=row_data.get('req_anal_actual'),
-    #         end_cases_exec_target=row_data.get('end_cases_exec_target'),
-    #         end_cases_exec_actual=row_data.get('end_cases_exec_actual'),
-    #         task_coverage_score_target=row_data.get('task_coverage_score_target'),
-    #         task_coverage_score_actual=row_data.get('task_coverage_score_actual'),
-    #         assessment_score_target=row_data.get('assessment_score_target'),
-    #         assessment_score_actual=row_data.get('assessment_score_actual'),
-    #         assessment_re_score_target=row_data.get('assessment_re_score_target'),
-    #         assessment_re_score_actual=row_data.get('assessment_re_score_actual'),
-    #         cert_score_target=row_data.get('cert_score_target'),
-    #         cert_score_actual=row_data.get('cert_score_actual'),
-    #         cert_re_score_target=row_data.get('cert_re_score_target'),
-    #         cert_re_score_actual=row_data.get('cert_re_score_actual'),
-    #         new_features_imp_target=row_data.get('new_features_imp_target'),
-    #         new_features_imp_actual=row_data.get('new_features_imp_actual'),
-    #         defects_fixed_target=row_data.get('defects_fixed_target'),
-    #         defects_fixed_actual=row_data.get('defects_fixed_actual'),
-    #         defects_verification_target=row_data.get('defects_verification_target'),
-    #         defects_verification_actual=row_data.get('defects_verification_actual'),
-    #         enhancements_target=row_data.get('enhancements_target'),
-    #         enhancements_actual=row_data.get('enhancements_actual'),
-    #         fig_desgns_target=row_data.get('fig_desgns_target'),
-    #         fig_desgns_actual=row_data.get('fig_desgns_actual'),
-    #         doc_update_target=row_data.get('doc_update_target'),
-    #         doc_update_actual=row_data.get('doc_update_actual'),
-    #         research_target=row_data.get('research_target'),
-    #         research_actual=row_data.get('research_actual'),
-    #         inv_defs=row_data.get('inv_defs'),
-    #         spel_errors=row_data.get('spel_errors'),
-    #         client_esc=row_data.get('client_esc'),
-    #         tst_cases_missing=row_data.get('tst_cases_missing'),
-    #         att=row_data.get('att'),
-    #         target=row_data['target'],
-    #         actual=row_data['actual'],
-    #         production=row_data['production'],
-    #         quality=row_data['quality'],
-    #         attendance=row_data['attendance'],
-    #         skill=row_data['skill'],
-    #         new_initiatives=row_data['new_initiatives'],
-    #         Dmax_score=row_data['Dmax_score'],
-    #     )
-
-    #     db.session.add(new_entry)
-    #     db.session.commit()
-
-    #     return data_list
     field_to_column = {
-        "employee_name": 0,
-        "employee_id": 1,
-        "employee_email": 2,
-        "today_date": 3,
-        "project": 4,
-        "designation": 5,
-        "test_case_creation_target": 6,
-        "test_case_creation_actual": 7,
-        "test_case_updation_target": 8,
-        "test_case_updation_actual": 9,
-        "test_case_execution_target": 10,
-        "test_case_execution_actual": 11,
-        "defects_found_target": 12,
-        "defects_found_actual": 13,
-        "defects_verification_target": 14,
-        "defects_verification_actual": 15,
-        "test_scripts_creation_target": 16,
-        "test_scripts_creation_actual": 17,
-        "test_scripts_updation_target": 18,
-        "test_scripts_updation_actual": 19,
-        "test_scripts_execution_target": 20,
-        "test_scripts_execution_actual": 21,
-        "site_Scrub_target": 22,
-        "site_Scrub_actual": 23,
-        "project_doc_target": 24,
-        "project_doc_actual": 25,
-        "internal_Review_target": 26,
-        "internal_Review_actual": 27,
-        "regression_cycle_target": 28,
-        "regression_cycle_actual": 29,
-        "req_anal_target": 30,
-        "req_anal_actual": 31,
-        "end_cases_exec_target": 32,
-        "end_cases_exec_actual": 33,
-        "task_coverage_score_target": 34,
-        "task_coverage_score_actual": 35,
-        "assessment_score_target": 36,
-        "assessment_score_actual": 37,
-        "assessment_re_score_target": 38,
-        "assessment_re_score_actual": 39,
-        "cert_score_target": 40,
-        "cert_score_actual": 41,
-        "cert_re_score_target": 42,
-        "cert_re_score_actual": 43,
-        "new_features_imp_target": 44,
-        "new_features_imp_actual": 45,
-        "defects_fixed_target": 46,
-        "defects_fixed_actual": 47,
-        "enhancements_target": 48,
-        "enhancements_actual": 49,
-        "fig_desgns_target": 50,
-        "fig_desgns_actual": 51,
-        "doc_update_target": 52,
-        "doc_update_actual": 53,
-        "research_target": 54,
-        "research_actual": 55,
-        "inv_defs": 56,
-        "spel_errors": 57,
-        "client_esc": 58,
-        "tst_cases_missing": 59,
-        "att": 60,
-        "dtouch": 61,
-        "new_init": 62,
-        "target": 63,
-        "actual":64,
-        "production":65,
-        "quality":66,
-        "attendance":67,
-        "skill":68,
-        "new_initiatives":69,
-        "Dmax_score":70
-    }
+            "employee_name": 'A',
+            "employee_id": 'B',
+            "employee_email": 'C',
+            "today_date": 'D',
+            "project": 'E',
+            "designation": 'F',
+            "test_case_creation_target": 'G',
+            "test_case_creation_actual": 'H',
+            "test_case_updation_target": 'I',
+            "test_case_updation_actual": 'J',
+            "test_case_execution_target": 'K',
+            "test_case_execution_actual": 'L',
+            "defects_found_target":'M',
+            "defects_found_actual":'N',
+            "defects_verification_target":'O',
+            "defects_verification_actual":'P',
+            "test_scripts_creation_target":'Q',
+            "test_scripts_creation_actual":'R',
+            "test_scripts_updation_target":'S',
+            "test_scripts_updation_actual":'T',
+            "test_scripts_execution_target":'U',
+            "test_scripts_execution_actual":'V',
+            "site_Scrub_target":'AG',
+            "site_Scrub_actual":'AH',
+            "project_doc_target":'W',
+            "project_doc_actual":'X',
+            "internal_Review_target":'Y',
+            "internal_Review_actual":'Z',
+            "regression_cycle_target":'AA',
+            "regression_cycle_actual":'AB',
+            "req_anal_target":'AC',
+            "req_anal_actual":'AD',
+            "end_cases_exec_target":'AE',
+            "end_cases_exec_actual":'AF',
+            "task_coverage_score_target":'AI',
+            "task_coverage_score_actual":'AJ',
+            "assessment_score_target":'AK',
+            "assessment_score_actual":'AL',
+            "assessment_re_score_target":'AM',
+            "assessment_re_score_actual":'AN',
+            "cert_score_target":"AO",
+            "cert_score_actual":'AP',
+            "cert_re_score_target":'AQ',
+            "cert_re_score_actual":'AR',
+            "new_features_imp_target":'AS',
+            "new_features_imp_actual":'AT',
+            "defects_fixed_target":'AU',
+            "defects_fixed_actual":'AV',
+            "enhancements_target":'AW',
+            "enhancements_actual":'AX',
+            "fig_desgns_target":'AY',
+            "fig_desgns_actual":'AZ',
+            "doc_update_target":'BA',
+            "doc_update_actual":'BB',
+            "research_target":'BC',
+            "research_actual":'BD',
+            "inv_defs":'BE',
+            "spel_errors":'BF',
+            "client_esc":'BG',
+            "tst_cases_missing":'BH',
+            "att":'BI',
+            "dtouch":'BJ',
+            "new_init":'BK',  
+            "target":'BL' 
+        }
+    actual_to_target_mapping = {}
+
+    for key in field_to_column.keys():
+        if key.endswith('_actual'):
+            target_key = key.replace('_actual', '_target')  # Replace '_actual' with '_target'
+            if target_key in field_to_column:  # Check if target_key exists
+                actual_to_target_mapping[key] = target_key
     if request.method == 'POST':
-        file = request.files["file"]
-        wb = load_workbook(file, data_only=True)
-        ws=wb.active
-        all_row_data = []
-        if file.filename == "":
-            return "No file selected", 400
-        for row in ws.iter_rows(min_row=4, values_only=True):  # Use values_only=False to access the cells directly
-            if not any(row):  # Skip empty rows
-                continue
-            row_data = {}
-            
-            # Map the columns to the appropriate fields and get the .value for each formula
-            for field, col_index in field_to_column.items():
-                cell_value = row[col_index]  # Directly get the value
-
-                if field in ["production", "quality", "attendance", "skill", "new_initiatives", "Dmax_score"]:
-                    if isinstance(cell_value, (int, float)):  # Ensure it's numeric before multiplying
-                        row_data[field] = round(cell_value * 100, 2)  # Convert to percentage
-                    else:
-                        row_data[field] = cell_value  # Keep as is if not numeric
-                else:
-                    row_data[field] = cell_value
-            
-            # Check if any field in the row is None, and skip the row if it contains null values
-            new_entry = Dform(**row_data)
-            db.session.add(new_entry)
-        db.session.commit()
-              
-    return render_template("form_bulk_upload.html")
-
-@app.route("/set_targets/<string:emp_id>",methods=["GET","POST"])
-def set_targets(emp_id):
-    role=request.args.get('role')
-    target_month = request.form.get("target_month")
-    target_year = request.form.get("target_year")
-    month_order = case(
-        {month: i for i, (month, _) in enumerate(monthsDict_2.items(), 1)},  # Map month name to numeric value (1 for "January", 2 for "February", etc.)
-        value=Target_columns.target_month,
-        else_=0
-    )
-    
-    employee=Employee_information.query.filter_by(emp_id=emp_id).first()
-    target_user = Target_columns.query.filter_by(emp_id=emp_id, status="waiting for approval")\
-    .order_by(Target_columns.target_year.desc(),
-              month_order.desc(),  # Sort by the numeric value of the month
-    ).first()
-    target_month_user=Target_columns.query.filter_by(emp_id=emp_id,target_month=target_month,target_year=target_year).first()
-    values={
-        "emp_id":employee.emp_id,
-        "emp_name":employee.emp_name
-    }
-    
-    fields = {}
-    if target_user:
-        fields = {column.name: getattr(target_user, column.name) for column in Target_columns.__table__.columns}
-         
-    if request.method=="POST":
-        role=request.args.get('role')
-        if target_month_user:
-            for field, value in request.form.items():
-                
-                if hasattr(target_user, field):
-                    setattr(target_user, field, value)
-            target_user.status = "waiting for approval"        
-             
-                   
-        else:
-            target_data = {field: int(value) if value.isdigit() else value for field, value in request.form.items() if hasattr(Target_columns, field)}
-            target_data["emp_id"] = emp_id  # Ensure emp_id is included
-            target_data["status"] = "waiting for approval"
-            new_target_entry = Target_columns(**target_data)
-            db.session.add(new_target_entry)            
-        db.session.commit()        
-    return render_template("set_targets.html", employee=employee,values=values,current_year=current_year,fields=fields,role=role,monthsDict=monthsDict)
-
-@app.route("/project_targets", methods=["GET", "POST"])
-def project_targets():
-    column_mapping = {
-        "Approval Manager": "ApprovalManager"  # Only for non-matching columns
-    }
-    if request.method == "POST":
         file = request.files['file']
         wb = load_workbook(file, data_only=True)
         ws=wb.active
-        excel_headers = [cell.value for cell in ws[1]]
-        db_columns = [column_mapping.get(header, header) for header in excel_headers]
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            if not any(row):  # Skip empty rows
-                continue
-            data_dict = dict(zip(db_columns, row))
-            project_name = data_dict.get("Project")
-            if project_name:
-                existing_project = ProjectTargets.query.filter_by(Project=project_name).first()
-            if existing_project:
-                    # Update existing record
-                    existing_project.Lead = data_dict.get("Lead", existing_project.Lead)
-                    existing_project.ApprovalManager = data_dict.get("ApprovalManager", existing_project.ApprovalManager)    
+        data_list = []
+
+        for row in ws.iter_rows(min_row=3, values_only=True):  # Skip header row
+            row_data = {}
+            for field, column in field_to_column.items():
+                col_index = openpyxl.utils.column_index_from_string(column) - 1
+                row_data[field] = row[col_index] if col_index < len(row) else None
+                
+                designation = row_data.get("designation", "")
+                attendance_input = row_data.get("att", 0)
+                if designation == "Intern":
+                    attendance = int((attendance_input * 10 / 100) * 100)
+                elif designation == "Jr.QA Engineer":
+                    attendance = int((attendance_input * 10 / 100) * 100)
+                elif designation == "QA Engineer":   
+                    attendance = int((attendance_input * 5 / 100) * 100) 
+                elif designation=="Sr.QA Engineer":
+                    attendance = int((attendance_input * 5 / 100) * 100)
+                elif designation=="QA Lead":
+                    attendance = int((attendance_input * 5 / 100) * 100)  
+                else:
+                    attendance = 0    
+                row_data["attendance"] = attendance
+                row_data["target"] = 0
+                row_data["actual"] = 0
+            if all(value not in (None, "") for value in row_data.values()):  
+                data_list.append(row_data)
+        for row_data in data_list:
+            # Fetch operational excellence details for each employee
+            operational_excellence = OperationalExcellence.query.filter_by(emp_id=row_data.get("employee_id")).first()
+            
+            if operational_excellence and operational_excellence.start_date and operational_excellence.end_date:
+                # Convert start_date and end_date to datetime objects
+                start_date = datetime.strptime(operational_excellence.start_date, "%Y-%m-%d")
+                end_date = datetime.strptime(operational_excellence.end_date, "%Y-%m-%d")
+
+                # Convert 'today_date' in row_data to a datetime object (ensure the field exists)
+                today_date_str = row_data.get('today_date', '')
+                print("today_date_str",today_date_str)
+                print("start_date",start_date)
+                print("end_date",end_date)
+                if today_date_str:
+                    if isinstance(today_date_str, str):  # Check if it's a string
+                        today_date = datetime.strptime(today_date_str, "%Y-%m-%d")
+                    else:
+                        today_date = today_date_str
+
+                    # Check if today_date is within the operational excellence date range
+                    if start_date <= today_date <= end_date:
+                        # Update the skill and new_initiatives in the row_data
+                        row_data['skill'] = operational_excellence.dtouch_score
+                        row_data['new_initiatives'] = operational_excellence.new_init_score
+                        print("startdate", start_date, "enddate", end_date, "today_date", today_date)
+                    else:
+                        # If today's date is not in the range, set default values
+                        row_data['skill'] = 0
+                        row_data['new_initiatives'] = 0
+                else:
+                    # Handle case where 'today_date' is missing or invalid
+                    row_data['skill'] = 0
+                    row_data['new_initiatives'] = 0
             else:
-                employee = ProjectTargets(**data_dict)
-                db.session.add(employee)
-        
-        db.session.commit()
-        
-    return render_template("projects_upload.html")
+                # If no operational excellence record is found, set default values
+                row_data['skill'] = 0
+                row_data['new_initiatives'] = 0
+            
+            if row_data.get('client_esc', 0) == 1:  # Check if BG (Client Escalations) is 1
+                row_data['quality'] = 0  # Set quality to 0 if BG is 1
+            else:
+                sum_invalid_defects_to_test_cases = (
+                    row_data.get('inv_defs', 0) +  # BE: Invalid Defects
+                    row_data.get('spel_errors', 0) +  # BF: Spelling Errors
+                    row_data.get('client_esc', 0) +  # BG: Client Escalations
+                    row_data.get('tst_cases_missing', 0)  # BH: Test Cases Missing
+                )       
+                row_data['quality'] = ((100 - sum_invalid_defects_to_test_cases) * 0.4 / 100) * 100
+            
+            for actual_field, target_field in actual_to_target_mapping.items():
+                for row in data_list: 
+                    if actual_field in row and row[actual_field] is not None and row[actual_field] > 0:
+                        row['target'] += int(row.get(target_field, 0))  # Use .get() to avoid KeyError
+                        row['actual'] += int(row.get(actual_field, 0))  
 
-@app.route("/approve_targets/<string:emp_id>/<string:role>", methods=["GET", "POST"])
-def approve_targets(emp_id, role):
-    # Handle the logic for approving targets
-    if request.method == "POST":
-        employee_id = request.form.get('employee_id')  # This returns an iterable of (key, value) pairs
-        month_order = case(
-            {month: i for i, (month, _) in enumerate(monthsDict_2.items(), 1)},  # Map month name to numeric value (1 for "January", 2 for "February", etc.)
-            value=Target_columns.target_month,
-            else_=0
+                    if row['target'] != 0 and row['actual'] != 0:  
+                        row['production'] = ((row['actual'] / row['target']) * 40 / 100) *100
+                    else:
+                        row['production'] = 0   
+            row_data['Dmax_score'] = sum([
+                row_data.get('production', 0),
+                row_data.get('quality', 0),
+                row_data.get('attendance', 0),
+                row_data.get('new_initiatives', 0),
+                row_data.get('skill', 0)
+            ])      
+            if row_data["attendance"]==0:      
+                row_data['Dmax_score'] =0
+                row_data['production'] =0
+                row_data['quality'] =0
+            
+            new_entry = Dform(
+            employee_name=row_data['employee_name'],
+            employee_id=row_data['employee_id'],
+            employee_email=row_data['employee_email'],
+            today_date=row_data['today_date'],
+            project=row_data['project'],
+            designation=row_data['designation'],
+            test_case_creation_target=row_data.get('test_case_creation_target'),
+            test_case_creation_actual=row_data.get('test_case_creation_actual'),
+            test_case_updation_target=row_data.get('test_case_updation_target'),
+            test_case_updation_actual=row_data.get('test_case_updation_actual'),
+            test_case_execution_target=row_data.get('test_case_execution_target'),
+            test_case_execution_actual=row_data.get('test_case_execution_actual'),
+            defects_found_target=row_data.get('defects_found_target'),
+            defects_found_actual=row_data.get('defects_found_actual'),
+            test_scripts_creation_target=row_data.get('test_scripts_creation_target'),
+            test_scripts_creation_actual=row_data.get('test_scripts_creation_actual'),
+            test_scripts_updation_target=row_data.get('test_scripts_updation_target'),
+            test_scripts_updation_actual=row_data.get('test_scripts_updation_actual'),
+            test_scripts_execution_target=row_data.get('test_scripts_execution_target'),
+            test_scripts_execution_actual=row_data.get('test_scripts_execution_actual'),
+            site_Scrub_target=row_data.get('site_Scrub_target'),
+            site_Scrub_actual=row_data.get('site_Scrub_actual'),
+            project_doc_target=row_data.get('project_doc_target'),
+            project_doc_actual=row_data.get('project_doc_actual'),
+            internal_Review_target=row_data.get('internal_Review_target'),
+            internal_Review_actual=row_data.get('internal_Review_actual'),
+            regression_cycle_target=row_data.get('regression_cycle_target'),
+            regression_cycle_actual=row_data.get('regression_cycle_actual'),
+            req_anal_target=row_data.get('req_anal_target'),
+            req_anal_actual=row_data.get('req_anal_actual'),
+            end_cases_exec_target=row_data.get('end_cases_exec_target'),
+            end_cases_exec_actual=row_data.get('end_cases_exec_actual'),
+            task_coverage_score_target=row_data.get('task_coverage_score_target'),
+            task_coverage_score_actual=row_data.get('task_coverage_score_actual'),
+            assessment_score_target=row_data.get('assessment_score_target'),
+            assessment_score_actual=row_data.get('assessment_score_actual'),
+            assessment_re_score_target=row_data.get('assessment_re_score_target'),
+            assessment_re_score_actual=row_data.get('assessment_re_score_actual'),
+            cert_score_target=row_data.get('cert_score_target'),
+            cert_score_actual=row_data.get('cert_score_actual'),
+            cert_re_score_target=row_data.get('cert_re_score_target'),
+            cert_re_score_actual=row_data.get('cert_re_score_actual'),
+            new_features_imp_target=row_data.get('new_features_imp_target'),
+            new_features_imp_actual=row_data.get('new_features_imp_actual'),
+            defects_fixed_target=row_data.get('defects_fixed_target'),
+            defects_fixed_actual=row_data.get('defects_fixed_actual'),
+            defects_verification_target=row_data.get('defects_verification_target'),
+            defects_verification_actual=row_data.get('defects_verification_actual'),
+            enhancements_target=row_data.get('enhancements_target'),
+            enhancements_actual=row_data.get('enhancements_actual'),
+            fig_desgns_target=row_data.get('fig_desgns_target'),
+            fig_desgns_actual=row_data.get('fig_desgns_actual'),
+            doc_update_target=row_data.get('doc_update_target'),
+            doc_update_actual=row_data.get('doc_update_actual'),
+            research_target=row_data.get('research_target'),
+            research_actual=row_data.get('research_actual'),
+            inv_defs=row_data.get('inv_defs'),
+            spel_errors=row_data.get('spel_errors'),
+            client_esc=row_data.get('client_esc'),
+            tst_cases_missing=row_data.get('tst_cases_missing'),
+            att=row_data.get('att'),
+            target=row_data['target'],
+            actual=row_data['actual'],
+            production=row_data['production'],
+            quality=row_data['quality'],
+            attendance=row_data['attendance'],
+            skill=row_data['skill'],
+            new_initiatives=row_data['new_initiatives'],
+            Dmax_score=row_data['Dmax_score'],
         )
-        target_entry = Target_columns.query.filter_by(emp_id=employee_id, status="waiting for approval")\
-            .order_by(Target_columns.target_year.desc(), 
-                      month_order.desc(),  # Order by month (latest month first)
-                      ).first() # Order by creation date (latest first) 
-        if target_entry:
-            # Mark the found target entry as approved
-            target_entry.status = 'approved'
-            db.session.commit()
-            print(f"Approved target entry for {employee_id} (Year: {target_entry.target_year}, Month: {target_entry.target_month})")
-        # approved_entry = Target_columns.query.filter_by(emp_id=employee_id, status="approved").first()
-        
-        # if approved_entry:
-        #     db.session.delete(approved_entry)  # Delete the existing approved target
-        #     db.session.commit()
-        #     print(f"Deleted existing approved entry for {employee_id}")
-        # target_entry = Target_columns.query.filter_by(emp_id=employee_id).first()
-        # if target_entry:
-        #     target_entry.status = 'approved'
-        #     db.session.commit()
-        return redirect(url_for('team_dmax_table')) 
 
-@app.route('/view_targets')
-def view_targets():
-    emp_id = request.args.get('emp_id')
-    month = request.args.get('month')
-    year=request.args.get('year')
-    target = Target_columns.query.filter_by(
-        emp_id=emp_id, 
-        target_month=month, 
-        target_year=year
-    ).first()
-    employee=Employee_information.query.filter_by(emp_id=emp_id).first()
-    values={
-        "emp_id":employee.emp_id,
-        "emp_name":employee.emp_name
-    }
-    if target is None:
-        return "No target found for this employee for the specified month and year.", 404
-    fields = {column.name: getattr(target, column.name) for column in Target_columns.__table__.columns}
-    return render_template('view_targets.html', fields=fields,monthsDict=monthsDict,values=values)
+        db.session.add(new_entry)
+        db.session.commit()
+
+        return data_list            
+    return render_template("form_bulk_upload.html")
      
 with app.app_context():
         
@@ -2423,4 +1693,3 @@ with app.app_context():
 
 if __name__ == "__main__":
     app.run(debug=True)
-

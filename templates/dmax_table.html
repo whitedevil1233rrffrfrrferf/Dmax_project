@@ -94,22 +94,17 @@
                         <table class="table table-bordered table-striped" style="margin-top: 2rem;width: 75%;">
                             <thead>
                                 <tr>
-                                    <!-- Loop through the column names to create table headers -->
-                                    {% if data_list %}
-                                        {% for field in data_list[0].keys() %}
-                                        <th>{{ field }}</th>
-                                        {% endfor %}
-                                    {% endif %}
+                                    <th>Employee ID</th>
+                                    <th>Employee Name</th>
+                                    <th>Average Score</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- Loop through the data list to create rows for each entry -->
-                                {% for row in data_list %}
+                                {% for row in avg_scores_list %}
                                 <tr>
-                                    <!-- Loop through each value in the current row to create table cells -->
-                                    {% for value in row.values() %}
-                                    <td>{{ value }}</td>
-                                    {% endfor %}
+                                    <td>{{ row.employee_id }}</td>
+                                    <td>{{ row.employee_name }}</td>
+                                    <td>{{ row.avg_score }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -146,9 +141,7 @@
             </div>
         </div>
     </div>
-    
-    
-    
+ 
     <script>
         function clearSearch() {
           const searchInput = document.querySelector('input[name="search_term"]');

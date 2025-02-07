@@ -5,20 +5,133 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='full_tdmax.css') }}">
+   
+    <link rel="stylesheet" href="{{ url_for('static', filename='view_dscore.css') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <script src="https://kit.fontawesome.com/9fe3d1bfff.js" crossorigin="anonymous"></script>
 </head>
 <body>
-    <h1 style="text-align: center;">{{employee.employee_name}}'s Record</h1>
-    <div class="table my-9">
+    
+    <div style="display: flex;" >
+        {% include 'sidemenu.html' %}
         
+        <div style="margin-left:7rem;">
+                
+            <h1 style="text-align: center; width:100%; margin-left:4%; " class="heading">{{ employee[0].employee_name }}'s Record</h1> 
+            <div class="filter_div container" style="margin-top:3rem; margin-bottom: 3rem;">
+                <div class="inner_filter_div">
+                    <label for="date">Date:</label>
+                    <input type="date" id="date" name="date" onchange="handleFilters()" value="{{ selected_date }}">
+                </div>
+                <div class="inner_filter_div">
+                    <label for="month">Month</label>
+                    <select id="month" onchange="handleFilters()">
+                        <option value="">Select</option>
+                        {% for num, name in monthsDict.items() %}
+                            <option value="{{ num }}" 
+                                {% if selected_month == num %}selected{% endif %}>
+                                {{ name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="inner_filter_div">
+                  <label for="year">Year</label>
+                  <select id="year" onchange="handleFilters()" style="width:5rem;">
+                    
+                    {% for year in years %}
+                        <option value="{{ year }}" {% if selected_year|int == year %}selected{% endif %}>
+                            {{ year }}
+                        </option>
+                    {% endfor %}
+                </select>
+              </div>
+                
+            </div>
+            {% if employee|length > 0 %}
+                <div class="table my-9">
+                    
+                    
+                        <table class="table highlighted_row">
+                            <thead>
+                                <tr>
+                                    <th scope="col" rowspan="3" class="table_header">Name</th>
+                                    <th scope="col" rowspan="3" style="text-align: center !important;" class="table_header">Date</th>
+                                
+                                    {% for category, subcategories in TABLE_HEADERS.items() %}
+                                        {% if subcategories is mapping %}
+                                            {% if category == "Production" %}
+                                                <!-- Special handling for Production category (colspan * 2) -->
+                                                <th scope="col" colspan="{{ subcategories|length * 2 }}" class="table_header">{{ category }}</th>
+                                            {% else %}
+                                                <!-- Default handling for other categories (colspan * 1) -->
+                                                <th scope="col" colspan="{{ subcategories|length }}" class="table_header">{{ category }}</th>
+                                            {% endif %}
+                                        {% else %}
+                                            <th scope="col" rowspan="3" class="table_header">{{ category }}</th>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    {% for category, subcategories in TABLE_HEADERS.items() %}
+                                        {% if subcategories is mapping %}
+                                            {% for subcategory, values in subcategories.items() %}
+                                                {% if category == "Production" %}
+                                                    <!-- For Production subcategories, we give colspan="2" for each one -->
+                                                    <th scope="col" colspan="2" class="table_header">{{ subcategory }}</th>
+                                                {% else %}
+                                                    <!-- For other categories, we apply colspan="1" -->
+                                                    <th scope="col"  rowspan="2" class="table_header">{{ subcategory }}</th>
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% endif %}
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    {% for category, subcategories in TABLE_HEADERS.items() %}
+                                        {% if subcategories is mapping %}
+                                            {% for subcategory, values in subcategories.items() %}
+                                                {% if category == "Production" %}
+                                                    <!-- For Production subcategories, display "Target" and "Actual" values -->
+                                                    {% for value in values %}
+                                                        <td class="table_header">{{ value }}</td>
+                                                    {% endfor %}
+                                                
+                                                    <!-- For other categories, display the value for the subcategory -->
+                                                    
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% endif %}
+                                    {% endfor %}
+                                </tr>
+                                
+                                
+                                
+                            </thead>
+                            <tbody>
+                                {% for emp in employee %}
+                                    <tr>
+                                        {% for column in ALLOWED_COLUMNS %}
+                                            <td class="table_header">{{ emp | get_attr(column) }}</td>
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+            {% else %}
+                <p class="no-data-message">No values found</p>
+            {% endif %}
+                   
+            </div>
             
-        <table class="table highlighted_row">
-            <thead>
+            
+        </div>
+    </div>   
+            <!-- <thead>
                 <tr>
                     <th scope="col" class="table_header" rowspan="3">Name</th>
                     <th scope="col" class="table_header " rowspan="3" style="text-align: center !important;">Date</th>
-                    <th scope="col" class="table_header" colspan="16">Production</th>
+                    <th scope="col" class="table_header" colspan="34">Production</th>
                     <th scope="col" class="table_header" colspan="4">Quality</th>
                     <th scope="col" class="table_header" rowspan="3" >Attendance</th>
                     <th scope="col" class="table_header" colspan="3" rowspan="2">Production %</th>
@@ -30,14 +143,23 @@
                   </tr>
                   <tr>
                               
-                    <th scope="col" class="table_header" colspan="2" >Tst case creation</th>
-                    <th scope="col" class="table_header" colspan="2" >Tst case Updation</th>
-                    <th scope="col" class="table_header" colspan="2" >Tst case Execution</th>
+                    <th scope="col" class="table_header" colspan="2" >Testcase creation</th>
+                    <th scope="col" class="table_header" colspan="2" >Testcase Updation</th>
+                    <th scope="col" class="table_header" colspan="2" >Testcase Execution</th>
                     <th scope="col" class="table_header" colspan="2">Defects (5/day)</th>
                     <th scope="col" class="table_header" colspan="2" >Issue Verification</th>
                     <th scope="col" class="table_header" colspan="2" >Testscripts Creation</th>
                     <th scope="col" class="table_header" colspan="2" >Testscripts Execution</th>
                     <th scope="col" class="table_header" colspan="2" >Testscripts Updation</th>
+                    <th scope="col" class="table_header" colspan="2" >Project Documentation</th>
+                    <th scope="col" class="table_header" colspan="2" >Internal review</th>
+                    <th scope="col" class="table_header" colspan="2" >Regression cycle</th>
+                    <th scope="col" class="table_header" colspan="2" >Requirement analyzing/writing testcondition</th>
+                    <th scope="col" class="table_header" colspan="2" >End-End test cases executed</th> 
+                    <th scope="col" class="table_header" colspan="2" >Site Scrub</th> 
+                    <th scope="col" class="table_header" colspan="2" >Task Achivement/Coverage score</th>
+                    <th scope="col" class="table_header" colspan="2" >Assessment Test score</th>
+                    <th scope="col" class="table_header" colspan="2" >Assessment Retest score</th>
                     <th scope="col" class="table_header" colspan="1" rowspan="2">No. of invalid defects</th>
                     <th scope="col" class="table_header" colspan="1" rowspan="2">Spelling/Typo errors</th>
                     <th scope="col" class="table_header" colspan="1" rowspan="2">Client escalations</th>
@@ -62,30 +184,40 @@
                     <th scope="col" class="table_header" >Target</th>
                     <th scope="col" class="table_header">Actual</th>
                     <th scope="col" class="table_header" >Target</th>
+                    <th scope="col" class="table_header">Actual</th>
+                    <th scope="col" class="table_header" >Target</th>
+                    <th scope="col" class="table_header">Actual</th>
+                    <th scope="col" class="table_header" >Target</th>
+                    <th scope="col" class="table_header">Actual</th>
+                    <th scope="col" class="table_header" >Target</th>
+                    <th scope="col" class="table_header">Actual</th>
+                    <th scope="col" class="table_header" >Target</th>
+                    <th scope="col" class="table_header">Actual</th>
+                    <th scope="col" class="table_header" >Target</th>
+                    <th scope="col" class="table_header">Actual</th>
+                    <th scope="col" class="table_header" >Target</th>
                     <th scope="col" class="table_header">Actual</th>  
+                    <th scope="col" class="table_header" >Target</th>
+                    <th scope="col" class="table_header">Actual</th>
+                    <th scope="col" class="table_header" >Target</th>
+                    <th scope="col" class="table_header">Actual</th>
+                    <th scope="col" class="table_header" >Target</th>
+                    <th scope="col" class="table_header">Actual</th>
                     <th scope="col" class="table_header" >Target</th>
                     <th scope="col" class="table_header">Actual</th>  
                     <th scope="col" class="table_header">Production%</th>              
                   </tr>
-            </thead>
-            <tbody>
-                <tr>
-                {% for column in ALLOWED_COLUMNS %}
-                   <td>{{ employee | get_attr(column) }}</td>
-                {% endfor %}   
-                </tr>
-            </tbody>
-        </table>
-        <div style="display: flex; margin-left: 30%; gap: 4rem;">
+            </thead> -->
             
-            <a class="btn btn-outline-secondary" href="{{url_for('view_dscore')}}" style=" padding:10px;width:6rem; height:3rem;">
-                <div style="display: flex; justify-content: space-between; padding:5px;">
-                    <div>
-                        <i class="fa-solid fa-backward" style="margin-right: 10px; "></i>
-                    </div>
-                    <div>Back</div>
-                </div>
-            </a>
-        </div>
+            <div style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);">
+                <a href="{{ request.path }}?{{ request.query_string.decode() }}&download_excel=1" class="btn btn-primary">
+                    Download Excel
+                </a>
+            </div>
+            
+    <script>
+        homeUrl = "{{ url_for('full_table_view', id=employee[0].employee_id) }}";
+    </script>  
+    <script src="{{ url_for('static', filename='full_table_view.js') }}"></script>        
 </body>
 </html>

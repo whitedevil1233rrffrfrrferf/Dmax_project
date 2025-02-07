@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Approval</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</head>
+<body>
+    <div class="flex_div">
+
+        <div>
+            {% include 'sidemenu.html' %}
+        </div>
+        <div style="flex:1; margin-left:20%; margin-top: 2rem;">
+            
+            <!-- Nav Tabs -->
+            <ul class="nav nav-tabs" style="margin-bottom: 2rem; width:85%;">
+                <li class="nav-item">
+                    <a class="nav-link active" id="pending-tab" data-toggle="tab" href="#pending">Pending Approval</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="approved-tab" data-toggle="tab" href="#approved">Approved Users</a>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <!-- Pending Approval (Default Active) -->
+                <div class="tab-pane fade show active" id="pending">
+                    <h2 style="background-color:#4699F9; color: white; text-align: center; width: 85%;">Pending Approval List</h2>
+                    <table class="table table-bordered table-striped" style="margin-top: 2rem; width:85%;">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="select-all"></th>
+                                <th>Employee ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in pending_users %}
+                            <tr>
+                                <td><input type="checkbox" class="user-checkbox" value="{{ user.emp_id }}"></td>
+                                <td>{{ user.emp_id }}</td>
+                                <td>{{ user.name }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>{{ user.role }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    
+                        <button id="approve-selected" class="btn btn-primary">Approve Selected</button>
+                    
+                    
+                </div>
+
+                <!-- Approved Users -->
+                <div class="tab-pane fade" id="approved">
+                    <h2 style="background-color:#4699F9; color: white; text-align: center; width: 85%;">Approved Users List</h2>
+                    <table class="table table-bordered table-striped" style="margin-top: 2rem; width:85%;">
+                        <thead>
+                            <tr>
+                                <th>Employee ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in approved_users %}
+                            <tr>
+                                <td>{{ user.emp_id }}</td>
+                                <td>{{ user.name }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>{{ user.role }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>  
+    <script src="{{ url_for('static', filename='approve.js') }}"></script>   
+    <script>
+        const approveUrl = "{{ url_for('approve_selected') }}";
+    </script>
+</body>
+</html>

@@ -31,6 +31,20 @@
                     
                 </a>
             </div>
+            <div class="inner_sidemenu_div">
+                <a href="{{url_for('approve_users')}}" class="menu-item" title="Dmax Upload">
+                    <i class="fa-solid fa-check"></i>
+                    
+                </a>
+            </div>
+            <div class="inner_sidemenu_div">
+                <a href="{{url_for('project_targets')}}" class="menu-item" title="Dmax Upload">
+                    <i class="fa-solid fa-bullseye"></i>
+                    
+                </a>
+            </div>
+            
+            
         {% endif %}
         {% if user_role == 'manager' %}
             <div class="inner_sidemenu_div">
