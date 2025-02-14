@@ -10,6 +10,11 @@
     <script src="https://kit.fontawesome.com/9fe3d1bfff.js" crossorigin="anonymous"></script>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        i{
+            color: white !important;
+        }
+    </style>
 </head>
 <body>
     <div style="display: flex;">
@@ -64,48 +69,49 @@
                     <tbody>
                         {% if employees %}
                             {% for emp in employees %}
-                            <tr>
-                                <td>{{ loop.index }}</td> <!-- Serial Number -->
-                                <td>{{ emp.name }}</td> <!-- Replace 'employee_id' with the actual column for names if applicable -->
-                                <td>{{ emp.emp_id }}</td>
-                                <td>
-                                    {% if emp.has_approved_target %}
-                                        <!-- Show "View targets" button first -->
-                                        <a href="{{ url_for('view_targets', emp_id=emp.emp_id, month=selected_month_name, year=selected_year) }}">
-                                            <button class="btn btn-info">
-                                                <i class="fa-regular fa-eye"></i>
-                                            </button>
-                                        </a>    
-                                       
-                                    {% elif emp.role == "Project Lead" %}
-                                        <a href="{{ url_for('set_targets', emp_id=emp.emp_id,role=emp.role) }}">
-                                            <button class="btn btn-primary">
-                                                <i class="fa-solid fa-marker"></i>
-                                            </button>
-                                        </a> 
-                                    {% elif emp.role == "Approval Manager" %}
-                                        <a href="{{ url_for('set_targets', emp_id=emp.emp_id,role=emp.role) }}">
-                                            <button class="btn btn-success">
-                                                <i class="fa-solid fa-check"></i>
-                                            </button>
+                                <tr>
+                                    <td>{{ loop.index }}</td> <!-- Serial Number -->
+                                    <td>{{ emp.name }}</td> <!-- Replace 'employee_id' with the actual column for names if applicable -->
+                                    <td>{{ emp.emp_id }}</td>
+                                    <td>
+                                        {% if emp.has_approved_target %}
+                                            <!-- Show "View targets" button first -->
+                                            <a href="{{ url_for('view_targets', emp_id=emp.emp_id, month=selected_month_name, year=selected_year) }}">
+                                                <button class="btn btn-info">
+                                                    <i class="fa-regular fa-eye"></i>
+                                                </button>
+                                            </a>    
+                                        
+                                        {% elif emp.role == "Project Lead" %}
+                                            <a href="{{ url_for('set_targets', emp_id=emp.emp_id,role=emp.role) }}">
+                                                <button class="btn btn-primary">
+                                                    <i class="fa-solid fa-marker"></i>
+                                                </button>
+                                            </a> 
+                                            {% elif emp.role == "Approval Manager" and emp.has_pending_target %}
+                                                <a href="{{ url_for('set_targets', emp_id=emp.emp_id, role=emp.role) }}">
+                                                    <button class="btn btn-success">
+                                                        <i class="fa-solid fa-check"></i>
+                                                    </button>
+                                                </a>
+                                                
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ emp.project }}</td>
+                                    <td>{{ emp.designation }}</td>
+                                    <td>{{emp.actual_reporting_manager}}</td>
+                                    <td>
+                                        <a href="{{ url_for('operational_excellence', emp_id=emp.emp_id) }}">
+                                            <i class="fa-solid fa-clipboard-user" style="color: black !important;"></i>
                                         </a>
-                                    {% endif %}
-                                </td>
-                                <td>{{ emp.project }}</td>
-                                <td>{{ emp.designation }}</td>
-                                <td>{{emp.actual_reporting_manager}}</td>
-                                <td>
-                                    <a href="{{ url_for('operational_excellence', emp_id=emp.emp_id) }}">
-                                        <i class="fa-solid fa-clipboard-user" style="color: black;"></i>
-                                    </a>
-                                </td>
-                                <td><a href="{{ url_for('edit_employee', employee_id=emp.id) }}"><i class="fas fa-edit" style="color: blue;"></i></a></td>
-                                <td>
-                                    <button class="btn btn-danger btn-sm delete-btn" data-id="{{ emp.id }}" data-url="{{ url_for('delete_employee', id=emp.id) }}">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </td>
-                            </tr>
+                                    </td>
+                                    <td><a href="{{ url_for('edit_employee', employee_id=emp.id) }}"><i class="fas fa-edit" style="color: blue !important;"></i></a></td>
+                                    <td>
+                                        <button class="btn btn-danger btn-sm delete-btn" data-id="{{ emp.id }}" data-url="{{ url_for('delete_employee', id=emp.id) }}" style="color: red !important;">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </td>
+                                </tr>
                             {% endfor %}
                         {% else %}
                             <tr>

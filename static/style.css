@@ -89,9 +89,9 @@ button {
 .blinking_text{
     text-align: center;
     margin-top: 2%;
-    font-size: 16px;
+    
     color: rgb(52, 208, 243);
-    animation: blink 2s infinite !important;
+    animation: blink 1.5s infinite !important;
 
 }
 .table_inpt{
@@ -283,7 +283,7 @@ a{
     font-size: 14px;
 
 }
-li:hover{
+/* li:hover{
     background-color: #007bff;
     color: gray;
-}
+} */

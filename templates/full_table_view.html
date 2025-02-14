@@ -55,6 +55,10 @@
                         <table class="table highlighted_row">
                             <thead>
                                 <tr>
+                                    <th scope="col" rowspan="3" class="table_header" style="width:0.8%;">
+                                        <input type="checkbox" id="selectAll">
+                                    </th>
+
                                     <th scope="col" rowspan="3" class="table_header">Name</th>
                                     <th scope="col" rowspan="3" style="text-align: center !important;" class="table_header">Date</th>
                                 
@@ -111,11 +115,20 @@
                             <tbody>
                                 {% for emp in employee %}
                                     <tr>
+                                        <td class="table_header"><input type="checkbox" class="rowCheckbox " value="{{emp.id}}"></td>
                                         {% for column in ALLOWED_COLUMNS %}
                                             <td class="table_header">{{ emp | get_attr(column) }}</td>
                                         {% endfor %}
                                     </tr>
                                 {% endfor %}
+                                <!-- {% for emp in employee %}
+                                    <tr>
+                                        
+                                        <td class="table_header">{{ emp.id}}</td>
+                                        
+                                    </tr>
+                                {% endfor %} -->
+
                             </tbody>
                         </table>
             {% else %}
@@ -209,15 +222,20 @@
                   </tr>
             </thead> -->
             
-            <div style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);">
+            <div style="margin-left: 20%; display: flex; justify-content: space-between;">
                 <a href="{{ request.path }}?{{ request.query_string.decode() }}&download_excel=1" class="btn btn-primary">
                     Download Excel
                 </a>
+                <button id="deleteSelected" class="btn btn-danger">Delete Selected</button>
             </div>
             
     <script>
         homeUrl = "{{ url_for('full_table_view', id=employee[0].employee_id) }}";
     </script>  
+    <script>
+        deleteUrl="{{ url_for('delete_employee_data') }}";
+    </script>
+
     <script src="{{ url_for('static', filename='full_table_view.js') }}"></script>        
 </body>
 </html>

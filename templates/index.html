@@ -4,17 +4,33 @@
     <title>Daily DMAX Form</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha384-DyZx78AnTb2dm+qElnR99ZZpBfzTq3Aj2mNh2qtw+J6dSe5Jk8GVjzPMLytIh5Dq" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    
+    <style>
+        .special_list{
+            list-style: disc;
+            margin-left: 2rem;
+            line-height: 1.2rem;    
+        }
+        i{
+            color: white;
+        }
+        
+    </style>
 </head>
 <body>
     <div class="flex_div">
         {% include 'sidemenu.html' %}
         <div class="container" style="flex-grow:1;">
-            <div class="inside_container">
-                <h1 class="heading">Welcome to Daily DMAX Form</h1>
-                <p class="blinking_text">Please fill out this DMAX form without fail.</p>
-    
             
+            <div class="inside_container">
+                <center> <img src="{{ url_for('static', filename='qaoncloud_logo.png') }}" alt="QAonCloud" class="logo" width="100px"></center>
+                <h1 class="heading">Welcome to Daily DMAX Form</h1>
+                <p >Please fill out this DMAX form without fail.</p>
+                <h3 class="blinking_text" style="text-align: left; margin-left: 8rem;">Things to be noted</h3>
+                <ul class="special_list" style="margin-left:4.6rem;">
+                    <li>Submit the form for the absentees too</li>
+                    <li>Submit the form for Saturday's without fail</li>
+                    <li>Don't forget to fill Attendance at the end</li>
+                </ul>
             <form method="post" action="{{url_for('home')}}" id="myForm" autocomplete="off">
                 <div class="form_div first_form_div" style="margin-left:auto;margin-right: auto; height:16rem;">
                     <h3 class="secondary_heading">Basic Information</h3>
@@ -28,9 +44,6 @@
                                         <datalist id="employee-list" style="border: 1px solid #ccc; padding: 10px; display:none;   " class="suggestion-list"></datalist>
                                     </div>
                                 </div>
-                                
-                                
-    
                                 
                             </div>
                             <div class="inside_flex_div_2" >
@@ -75,6 +88,7 @@
                                 <option value="IQHive">IQHive</option>
                                 <option value="LevelBlue">LevelBlue</option>
                                 <option value="Web Development">Web Development</option>
+                                <option value="Geek Ladder">Geek Ladder</option>
                                 <option value="Opus Clip">Opus Clip</option>
                                 <option value="Training">Training</option>
                             </select>
@@ -110,7 +124,7 @@
                         
                     </div>    
                     <div id="test_cases_section">
-                        <h3>Test cases</h3>
+                        <h3>TestCases</h3>
                         <!-- <table>
                             <thead >
                                 <tr>

@@ -79,7 +79,12 @@
                 
             </a>
         </div>
-        
+        <div class="inner_sidemenu_div">
+            <a href="{{url_for('profile')}}" class="menu-item" title="Profile">
+                <i class="fa-solid fa-circle-user"></i>
+                
+            </a>
+        </div>
         <!-- <div class="inner_sidemenu_div">
             <a href="{% if role == 'admin' %} {{ url_for('dmax_table') }} {% else %} {{ url_for('no_access') }} {% endif %}" class="menu-item" title="View Dmax">
                 <i class="fa-solid fa-table"></i> 

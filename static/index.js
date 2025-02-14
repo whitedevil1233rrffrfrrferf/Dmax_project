@@ -117,6 +117,7 @@ function toggleProjectTable() {
     const projectSections={
         "Akyrian":["test_cases_section","defects_section","test_scripts_section","others_section"],
         "Auxo":["test_cases_section","defects_section","test_scripts_section","others_section"],
+        "Geek Ladder":["test_cases_section","defects_section","test_scripts_section","others_section"],
         "Avanti":["test_cases_section","defects_section","others_section"],
         "Bench":["training_section"],
         "Training":["training_section"],

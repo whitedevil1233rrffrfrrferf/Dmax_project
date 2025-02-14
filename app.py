@@ -85,7 +85,7 @@ def get_logged_in_user_details():
         email = session['email']
         user = Employee.query.filter_by(email=email).first()  # Match email with the logged-in user's email
         if user:
-            return {"name": user.name, "role": user.role}
+            return {"name": user.name, "role": user.role,"email":user.email}
 
     # If no user is found, return None or an appropriate message
     return None
@@ -1017,7 +1017,19 @@ def employee_upload():
             for row in ws.iter_rows(min_row=2, values_only=True):
                 
                 employee_data = {db_field: row[idx] for db_field, idx in mapped_columns.items()}
-                
+                if "emp_designation" in employee_data:
+                    designation = employee_data["emp_designation"]
+                    
+                    # Standardizing incorrect spellings
+                    corrections = {
+                        "SrQAEngineer": "Sr.QA Engineer",
+                        "Sr QA Engineer": "Sr.QA Engineer",
+                        "JrQAEngineer": "Jr.QA Engineer",
+                        "Jr QA Engineer": "Jr.QA Engineer"
+                    }
+                    
+                    # If the designation needs correction, apply it
+                    employee_data["emp_designation"] = corrections.get(designation, designation)
                 if 'emp_name' in employee_data:
                     emp_name = employee_data['emp_name']
                     if emp_name is None:
@@ -1105,6 +1117,8 @@ def employee_upload():
 def dmax_table():
     default_page_size = 10
     page_size_options = [10, 20, 30, 'All']
+    current_month=str(datetime.now().month)
+    
     if request.method == "POST":
         selected_page_size = request.form.get("page_size", default_page_size)
         # Set page_size to None for 'All', or convert to int if numeric
@@ -1128,7 +1142,7 @@ def dmax_table():
     search_term = request.args.get("search_term", "").strip()
     selected_designation=request.args.get("designation")
     selected_project=request.args.get("project")
-    selected_month = request.args.get("month", default=str(datetime.now().month - 1 if datetime.now().month > 1 else 1))
+    selected_month = request.args.get("month", current_month)
     if not selected_month:
         current_month = datetime.now().month
         selected_month = str(current_month)
@@ -1209,9 +1223,12 @@ def team_dmax_table():
         selected_month = request.args.get('month')
         selected_year = request.args.get('year')
         selected_year = int(selected_year) if selected_year else None
-        
         current_month = datetime.now().strftime("%m")
         current_year = datetime.now().strftime("%Y")
+        if not selected_month:
+            selected_month = current_month
+        if not selected_year:
+            selected_year= int(current_year)    
         selected_month_name = monthsDict.get(selected_month)
         employees_under_projects = []
         if role=="admin" or role=="super_admin":
@@ -1231,14 +1248,32 @@ def team_dmax_table():
                 employees_in_project = Employee_information.query.filter_by(emp_project=project.Project).all()
                 employees_under_projects.extend(employees_in_project)
         all_accessible_employees = {emp.emp_email: emp for emp in employees_under_manager + employees_under_projects  + employees_under_actual_approval_manager}.values()
-
+        all_accessible_emp_ids = [emp.emp_id for emp in all_accessible_employees]
+        targets = Target_columns.query.filter(Target_columns.emp_id.in_(all_accessible_emp_ids)).all()
+        employees_with_pending_targets = {
+            target.emp_id: {"month": target.target_month, "year": target.target_year}  
+            for target in targets if target.status == "waiting for approval"
+        }
+        print("employees_with_pending_targets",employees_with_pending_targets)
         approved_targets = Target_columns.query.filter(
                     Target_columns.emp_id.in_([emp.emp_id for emp in all_accessible_employees]),  # Only check targets for managed employees
                     Target_columns.target_month == selected_month_name,
                     Target_columns.target_year == selected_year,
                     Target_columns.status == "approved"
-                ).all()    
+                ).all()   
+        
+        
         employees_with_approved_targets = set(target.emp_id for target in approved_targets)
+        waiting_for_approval_targets = Target_columns.query.filter(
+            Target_columns.emp_id.in_([emp.emp_id for emp in all_accessible_employees]),  
+            Target_columns.target_month == selected_month_name,
+            Target_columns.target_year == selected_year,
+            Target_columns.status == "waiting for approval"
+        ).all()
+        employees_with_pending_targets = {
+            target.emp_id: {"month": target.target_month, "year": target.target_year}
+            for target in waiting_for_approval_targets
+        }
         
         filtered_employees = []
         for emp in all_accessible_employees:
@@ -1256,7 +1291,8 @@ def team_dmax_table():
                                 else ("Approval Manager" if emp.emp_project in [proj.Project for proj in user_manager]
                                 else "Employee")
                             ) , # Determine role,
-                    "has_approved_target": (emp.emp_id in employees_with_approved_targets) if employees_with_approved_targets else False  # Store whether they have an approved target        
+                    "has_approved_target": (emp.emp_id in employees_with_approved_targets) if employees_with_approved_targets else False , # Store whether they have an approved target
+                    "has_pending_target": employees_with_pending_targets.get(emp.emp_id, {})        
                                         })
                 
         return render_template('team_dmax_table.html',employees=filtered_employees,user_name=user_name,years=last_ten_years,selected_month=selected_month, current_month=current_month,monthsDict=monthsDict,current_year=current_year,selected_year=selected_year,selected_month_name=selected_month_name)
@@ -1271,6 +1307,7 @@ def view_dscore():
         "quality", "attendance", "skill", "new_initiatives", "Dmax_score","att"
     ]
     current_year=datetime.now().year
+    current_month=str(datetime.now().month)
     
     years = [current_year - i for i in range(11)]
     # ALLOWED_COLUMNS = [
@@ -1299,9 +1336,9 @@ def view_dscore():
         user_name=user_name['name'].lower()
         search_query = request.args.get('search', '').strip().lower()
         selected_date = request.args.get('date') 
-        selected_month = request.args.get('month')
+        selected_month = request.args.get('month',current_month)
         selected_year=request.args.get('year',current_year)
-        
+        print("month",selected_month)
         if role =="manager":    
             employees_under_manager = Employee_information.query.filter(func.lower(Employee_information.reporting_manager)==user_name).all()
             filtered_employees=[]
@@ -1325,7 +1362,7 @@ def view_dscore():
                 # if selected_date:
                 #     query = query.filter_by(today_date=selected_date)
                 # matched_employees = query.all()    
-                if matched_employees:
+                if matched_employees.count() > 0:
                     # for matched in matched_employees:
                     #     filtered_employees.append(
                     #         {
@@ -1363,7 +1400,7 @@ def view_dscore():
                 selected_year
             )
             filtered_employees=[]
-            if matched_employees:
+            if matched_employees.count() > 0:
                 first_entry = matched_employees.first()
                 if first_entry:
                     averages = get_averages_for_filtered_employees(matched_employees)  # Compute averages ONCE
@@ -1403,7 +1440,7 @@ def view_dscore():
                 )
                 
                 # If matched employees exist, calculate averages
-                if matched_employees:
+                if matched_employees.count() > 0:
                     averages = get_averages_for_filtered_employees(matched_employees)
                     
                     # If averages are found, append to the filtered employees list
@@ -1522,9 +1559,9 @@ def full_table_view(id):
     base_query = Dform.query.filter_by(employee_id=id)
     current_year=datetime.now().year
     selected_date = request.args.get('date')
-    current_month = datetime.now().strftime("%m")
+    current_month = str(datetime.now().strftime("%m"))
     
-    selected_month = request.args.get('month')
+    selected_month = request.args.get('month',current_month)
     
     selected_month_name = monthsDict.get(selected_month)
     
@@ -1619,6 +1656,22 @@ def full_table_view(id):
         # Add other mappings here as needed
     }
     PROJECT_SELECTION = {
+            "Akyrian": [
+                "Testcase Creation",  # Only these categories should be included
+                "Testcase Updation",
+                "Testcase Execution",
+                "Defects (5/day)",
+                "Issue Verification",
+                "Testscripts Creation",
+                "Testscripts Updation",
+                "Testscripts Execution",
+                "Site Scrub",
+                "Project Documentation",
+                "Internal review",
+                "Regression cycle",
+                "Requirement analyzing/writing testcondition",
+                "End-End test cases executed"
+            ],
             "Akyrian": [
                 "Testcase Creation",  # Only these categories should be included
                 "Testcase Updation",
@@ -2295,12 +2348,14 @@ def set_targets(emp_id):
     role=request.args.get('role')
     target_month = request.form.get("target_month")
     target_year = request.form.get("target_year")
+    current_year=datetime.now().year
+    current_year=int(current_year)
     month_order = case(
         {month: i for i, (month, _) in enumerate(monthsDict_2.items(), 1)},  # Map month name to numeric value (1 for "January", 2 for "February", etc.)
         value=Target_columns.target_month,
         else_=0
     )
-    
+    years=last_ten_years
     employee=Employee_information.query.filter_by(emp_id=emp_id).first()
     target_user = Target_columns.query.filter_by(emp_id=emp_id, status="waiting for approval")\
     .order_by(Target_columns.target_year.desc(),
@@ -2309,13 +2364,15 @@ def set_targets(emp_id):
     target_month_user=Target_columns.query.filter_by(emp_id=emp_id,target_month=target_month,target_year=target_year).first()
     values={
         "emp_id":employee.emp_id,
-        "emp_name":employee.emp_name
+        "emp_name":employee.emp_name,
+        "project":employee.emp_project
     }
     
     fields = {}
     if target_user:
         fields = {column.name: getattr(target_user, column.name) for column in Target_columns.__table__.columns}
-         
+    current_year=current_year
+    print(current_year)     
     if request.method=="POST":
         role=request.args.get('role')
         if target_month_user:
@@ -2333,13 +2390,15 @@ def set_targets(emp_id):
             new_target_entry = Target_columns(**target_data)
             db.session.add(new_target_entry)            
         db.session.commit()        
-    return render_template("set_targets.html", employee=employee,values=values,current_year=current_year,fields=fields,role=role,monthsDict=monthsDict)
+    return render_template("set_targets.html", employee=employee,values=values,current_year=current_year,fields=fields,role=role,monthsDict=monthsDict,years=years)
 
 @app.route("/project_targets", methods=["GET", "POST"])
 def project_targets():
     column_mapping = {
         "Approval Manager": "ApprovalManager"  # Only for non-matching columns
     }
+    
+    project_targets = ProjectTargets.query.all()
     if request.method == "POST":
         file = request.files['file']
         wb = load_workbook(file, data_only=True)
@@ -2363,7 +2422,7 @@ def project_targets():
         
         db.session.commit()
         
-    return render_template("projects_upload.html")
+    return render_template("projects_upload.html",project_targets=project_targets)
 
 @app.route("/approve_targets/<string:emp_id>/<string:role>", methods=["GET", "POST"])
 def approve_targets(emp_id, role):
@@ -2409,13 +2468,41 @@ def view_targets():
     employee=Employee_information.query.filter_by(emp_id=emp_id).first()
     values={
         "emp_id":employee.emp_id,
-        "emp_name":employee.emp_name
+        "emp_name":employee.emp_name,
+        "project":employee.emp_project
     }
     if target is None:
         return "No target found for this employee for the specified month and year.", 404
     fields = {column.name: getattr(target, column.name) for column in Target_columns.__table__.columns}
     return render_template('view_targets.html', fields=fields,monthsDict=monthsDict,values=values)
-     
+
+@app.route('/profile')
+def profile():
+    user=get_logged_in_user_details()
+    if user:
+        print(user)
+    if not user or "email" not in user:
+        return "User not found", 404  # Handle case where user details are missing
+    print(user)
+    # Query the Employee table using the logged-in user's email
+    employee = Employee.query.filter_by(email=user["email"]).first() 
+    if employee:
+        print("yes")
+    if not employee:
+        return "Employee record not found", 404  # Handle case where employee data is missing
+
+    return render_template("profile.html", employee=employee)
+    
+@app.route('/delete_employee_data', methods=['POST'])
+def delete_employee_data():
+    data = request.get_json()
+    ids_to_delete = data.get("ids", [])
+    
+    if not ids_to_delete:
+        return jsonify({"success": False, "message": "No IDs received"})    
+    Dform.query.filter(Dform.id.in_(ids_to_delete)).delete()
+    db.session.commit()
+    return jsonify({"success": True})
 with app.app_context():
         
         db.create_all()
