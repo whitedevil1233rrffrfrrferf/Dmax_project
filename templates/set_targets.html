@@ -1,23 +1,82 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Daily DMAX Form</title>
+    <title>Targets Form</title>
+    <link rel="icon" href="{{ url_for('static', filename='title_icons/home_page.png') }}" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha384-DyZx78AnTb2dm+qElnR99ZZpBfzTq3Aj2mNh2qtw+J6dSe5Jk8GVjzPMLytIh5Dq" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
     <style>
         i{
             color: white !important;
         }
+        #flash-messages {
+            position: absolute;
+            top: 20px;
+            left:35%;
+            z-index: 1000;
+            text-align: center !important;
+        }
+
+        .flash-message {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .flash-message.success {
+            background-color: #4CAF50; /* Green */
+        }
+
+        .flash-message.warning {
+            background-color: #FF5733; /* Orange */
+        }
+
+        .flash-message.error {
+            background-color: #FF5733; /* Red */
+        }
+
+        .flash-message.info {
+            background-color: #007BFF; /* Blue */
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            margin-left: 10px;
+        }
     </style>
 </head>
 <body>
-    <div class="flex_div">
+    <div class="flex_div" style="position: relative;">
         {% include 'sidemenu.html' %}
         {% set selected_year = fields.get('target_year', current_year) %}
         <div class="container" style="flex-grow:1;">
-            <div class="inside_container">
+            <div class="inside_container" style="align-items: center;">
+                {% with messages = get_flashed_messages(with_categories=True) %}
+                    {% if messages %}
+                        <div id="flash-messages">
+                            {% for category, message in messages %}
+                                <div class="flash-message {{ category }}">
+                                    <span>{{ message }}</span>
+                                    <button class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
                 <h1 class="heading">Targets Form</h1>
-                <h1>{{selected_year}}</h1>
+                
                 <p class="blinking_text">Please fill out this Target form without fail.</p>
             <form method="post" action="{{ url_for('set_targets', emp_id=values.emp_id,role=role) if role != 'Approval Manager' else url_for('approve_targets', emp_id=values.emp_id,role=role) }}" id="myForm" autocomplete="off">
                 <div class="form_div first_form_div" style="margin-left:auto;margin-right: auto; height:13rem;">

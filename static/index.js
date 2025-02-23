@@ -16,10 +16,20 @@ function searchEmployee(){
         var employeeName = document.getElementById('employee_name').value;
         
         // Send an Axios POST request
-        axios.post('/search', {
+        axios.post(searchUrl, {
             employee_name: employeeName
         })
         .then(function (response) {
+            console.log("Axios Response:", response.data); // Debugging step
+
+            if (response.data.error) {  
+                console.log("bug1")
+            }
+
+            // If employee_details exists and has an error message
+            if (response.data.employee_details && response.data.employee_details.error) {
+                console.log("bug2")
+            }
             var employees = response.data.employees;
             
             var listHtml = '';
@@ -63,7 +73,10 @@ function selectEmployee(element) {
     try {
         var employee = JSON.parse(employeeDetails);
         
-        console.log(employeeDetails)
+        if (employee.error) {
+            alert(employee.error); // Display error message
+            return; // Stop further execution
+        }
         var fieldMapping = {
             'emp_name': 'employee_name',
             'emp_id': 'employee_id',

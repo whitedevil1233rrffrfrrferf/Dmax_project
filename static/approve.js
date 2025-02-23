@@ -3,7 +3,7 @@ document.getElementById('select-all').addEventListener('click', function() {
     checkboxes.forEach(checkbox => checkbox.checked = this.checked);
 });
 document.getElementById('approve-selected').addEventListener('click', function() {
-    alert("hh")
+    
     let selectedUsers = [];
     document.querySelectorAll('.user-checkbox:checked').forEach(checkbox => {
         selectedUsers.push(checkbox.value);

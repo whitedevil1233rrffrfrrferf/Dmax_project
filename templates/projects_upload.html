@@ -7,7 +7,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='tdmax.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <script src="https://kit.fontawesome.com/9fe3d1bfff.js" crossorigin="anonymous"></script>
-    <title>Document</title>
+    <title>Projects Upload page</title>
+    <link rel="icon" href="{{ url_for('static', filename='title_icons/projects_upload_page.png') }}" type="image/png">
     <style>
       body{
         background-color: white;
@@ -48,24 +49,32 @@
                     
                     <div class="card-body">
                         <div class="container" style="display: flex; justify-content: space-around; align-items: center; height:19rem; margin-top: 20px;">
+                          <div style="display: flex; flex-direction: column;">
+                            <h2 style="color: gray;">Step:-1</h2>
+                            <div style="border: 1px solid black; padding: 20px; width:30rem; box-shadow: 5px 15px 25px rgba(0,0,0,0.35); height:10rem;">
+                              <h2 style="text-align: center;">Download Excel format</h2>
+                              <a href="static/files/emp_info.xlsx" download class="btn btn-info icon mt-3">Download <i
+                                      class="fa-solid fa-download"></i></a>
+                                    
+                            </div>
+                          </div>  
+                          <div style="display: flex; flex-direction: column;">
+                            <h2 style="color: gray;">Step:-2</h2>
                             <form action="{{url_for('project_targets')}}" method="post" enctype="multipart/form-data" style=" max-width:40rem; border: 1px solid black; padding: 20px; width:30rem; box-shadow: 5px 15px 25px rgba(0,0,0,0.35);">
                               
-                                <div  style="position: relative; left:100px;">
-                                    <h4 style="display: inline; text-align: center;">File:</h4>
-                                    <label for="file">Choose a File <i class="fa-solid fa-upload"></i></label>
-                                    <input type="file" id="file" name="file" class="file-input" accept=".xlsx"  required>
-                                    <span id="file-name" style="display: block; color: gray; margin-left:20%;"></span>
-                                </div>
+                              <div  style="position: relative; left:100px;">
+                                  <h4 style="display: inline; text-align: center;">File:</h4>
+                                  <label for="file">Choose a File <i class="fa-solid fa-upload"></i></label>
+                                  <input type="file" id="file" name="file" class="file-input" accept=".xlsx"  required>
+                                  <span id="file-name" style="display: block; color: gray; margin-left:20%;"></span>
+                              </div>
+              
+                              <button type="submit" class="btn btn-primary mt-3 upload" style="position: relative; left:170px; top:10px;" id="emp_info_upload">Upload</button>
+                          </form>
+                          </div>  
+                            
                 
-                                <button type="submit" class="btn btn-primary mt-3 upload" style="position: relative; left:170px; top:10px;" id="emp_info_upload">Upload</button>
-                            </form>
-                
-                            <div style="border: 1px solid black; padding: 20px; width:30rem; box-shadow: 5px 15px 25px rgba(0,0,0,0.35); height:10rem;">
-                                <h2 style="text-align: center;">Download Excel format</h2>
-                                <a href="static/files/emp_info.xlsx" download class="btn btn-info icon mt-3">Download <i
-                                        class="fa-solid fa-download"></i></a>
-                                      
-                            </div>
+                            
                             
                         </div>
                         <div style="display: flex;">

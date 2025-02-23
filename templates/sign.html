@@ -69,7 +69,7 @@
       </div>
     </div>
     <div>
-      <form class="form-signin" action="/" method="post" style=" text-align: center; margin: auto; padding:rem; background-color: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); margin-top:10%; height:29rem; width: 29rem;">
+      <form class="form-signin" action="{{url_for('sign')}}" method="post" style=" text-align: center; margin: auto; padding:rem; background-color: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); margin-top:10%; height:29rem; width: 29rem;">
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
               {% for category, message in messages %}
