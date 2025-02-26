@@ -82,7 +82,7 @@
                           <th scope="col" class="table_header">Skill</th>
                           <th scope="col" class="table_header">New initiatives</th>
                           <th scope="col" class="table_header">Dmax score</th>
-                          <th scope="col" class="table_header">Targets status</th>
+                          <th scope="col" class="table_header">Dmax status</th>
                           <th scope="col" class="table_header">View</th>
                         </thead>
                         <tbody>
@@ -97,7 +97,36 @@
                               <td>{{emp.skill}}</td>
                               <td>{{emp.new_initiatives}}</td>
                               <td>{{emp.Dmax_score}}</td>
-                              <td>{{emp.project_status}}</td>
+                              <td>
+                                {% if emp.is_approval_manager %}  <!-- If the user is the Approval Manager (Admin) -->
+                                    {% if emp.approval_status == "waiting for approval" %}
+                                        <button class="btn btn-success approve-btn" 
+                                            data-email="{{ emp.employee_id }}" 
+                                            data-month="{{ selected_month }}" 
+                                            data-year="{{ selected_year }}">
+                                            Approve
+                                        </button>
+                                    {% else %}
+                                        {{ emp.approval_status if emp.approval_status else "Pending" }}
+                                    {% endif %}
+                                
+                                {% endif %}
+                                {% if emp.is_actual_manager %}
+                                    {% if emp.approval_status is none %}
+                                        <button class="btn btn-success approve-btn" 
+                                            data-email="{{ emp.employee_id }}" 
+                                            data-month="{{ selected_month }}" 
+                                            data-year="{{ selected_year }}" style="font-size: 10px;"> 
+                                            Send for approval
+                                        </button>
+                                    {% else %}
+                                        {{ emp.approval_status }}
+                                    {% endif %}
+                                {% endif %}
+                                {% if not emp.is_approval_manager and not emp.is_actual_manager %}
+                                    {{ emp.approval_status if emp.approval_status else "Not approved" }}
+                                {% endif %}
+                              </td>
                               <td>
                                 <a href="{{ url_for('full_table_view',id=emp.employee_id,project=emp.project) }}">
                                   <i class="fa-solid fa-eye" style="color: black;"></i>
@@ -188,6 +217,9 @@
     </div>
     <script>
         const homeUrl = "{{ url_for('view_dscore') }}";
+      </script>
+      <script>
+        const approveUrl = "{{ url_for('approve_employee') }}";
       </script>
       <script>
         function clearSearch() {

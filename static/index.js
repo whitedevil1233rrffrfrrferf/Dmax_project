@@ -184,13 +184,16 @@ document.getElementById("myForm").addEventListener("submit",function(){
                     return; // Stop further execution if user cancels
                 }
             }
-    
+            
             // Show confirmation popup
             let confirmation = confirm("Are you sure you want to submit the form?");
-
+            if (document.querySelector(".flash-error")) {
+                event.preventDefault(); // Stop form submission
+                return;
+            }    
             if (confirmation) {
                 // If user clicks "OK", submit the form
-                alert("Form submitted successfully!");
+                
                 this.submit(); // Programmatically submit the form
             } else {
                 // If user clicks "Cancel", do nothing and keep form values

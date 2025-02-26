@@ -14,7 +14,51 @@
         i{
             color: white;
         }
-        
+        #flash-messages {
+            position: absolute;
+            top: 20px;
+            left:35%;
+            z-index: 1000;
+            text-align: center !important;
+        }
+
+        .flash-message {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .flash-message.success {
+            background-color: #4CAF50; /* Green */
+        }
+
+        .flash-message.warning {
+            background-color: #FF5733; /* Orange */
+        }
+
+        .flash-message.error {
+            background-color: #FF5733; /* Red */
+        }
+
+        .flash-message.info {
+            background-color: #007BFF; /* Blue */
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            margin-left: 10px;
+        }
     </style>
 </head>
 <body>
@@ -25,6 +69,18 @@
             <div class="inside_container">
                 <center> <img src="{{ url_for('static', filename='qaoncloud_logo.png') }}" alt="QAonCloud" class="logo" width="100px"></center>
                 <h1 class="heading">Welcome to Daily DMAX Form</h1>
+                {% with messages = get_flashed_messages(with_categories=True) %}
+                    {% if messages %}
+                        <div id="flash-messages">
+                            {% for category, message in messages %}
+                                <div class="flash-message {{ category }}">
+                                    <span>{{ message }}</span>
+                                    <button class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
                 <p >Please fill out this DMAX form without fail.</p>
                 <h3 class="blinking_text" style="text-align: left; margin-left: 8rem;">Things to be noted</h3>
                 <ul class="special_list" style="margin-left:4.6rem;">

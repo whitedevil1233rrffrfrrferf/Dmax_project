@@ -62,7 +62,9 @@ app.config['SQLALCHEMY_BINDS']={
     'emp_info':'sqlite:///empinfo.db',
     'op_excellence':'sqlite:///opexcellence.db',
     'target_columns':'sqlite:///target_columns.db',
-    'project_targets':'sqlite:///project_targets.db'
+    'project_targets':'sqlite:///project_targets.db',
+    'project_targets':'sqlite:///project_targets.db',
+    'dmax_approval':'sqlite:///dmax_approval.db'
 }
 db = SQLAlchemy(app)
 
@@ -206,6 +208,15 @@ def generate_excel_from_template(employees):
     output.seek(0)
     return send_file(output, download_name="filtered_employees.xlsx", as_attachment=True, mimetype="application/octet-stream")
 
+def has_previous_month_entry(employee_id, month):
+    """ Check if the employee has at least one entry for the previous month. """
+    previous_month = month - 1 if month > 1 else 12
+    
+
+    return db.session.query(Dform).filter(
+        Dform.employee_id == employee_id,
+        extract('month', Dform.today_date) == previous_month  # Extract month from today_date
+    ).first() is not None
 ###############################################  Month dictionary ###############################################
 
 monthsDict = {
@@ -372,7 +383,7 @@ class Employee_information(db.Model):
     reporting_manager=db.Column(db.String(100))
     actual_reporting_manager=db.Column(db.String(100))
     target_month=db.Column(db.String(100))
-
+    
 class Target_columns(db.Model):
     __bind_key__="target_columns"
     id = db.Column(db.Integer, primary_key=True)
@@ -432,6 +443,13 @@ class ProjectTargets(db.Model):
     Lead = db.Column(db.String(100), nullable=False)
     ApprovalManager= db.Column(db.String(100), nullable=False)
 
+class DmaxApprovals(db.Model):
+    __bind_key__="dmax_approval"
+    id = db.Column(db.Integer, primary_key=True)
+    employee_email = db.Column(db.String, nullable=False)
+    approved_month = db.Column(db.Integer, nullable=False)  # Month (1-12)
+    approved_year = db.Column(db.Integer, nullable=False)   # Year (2024, etc.)
+    status= db.Column(db.String(100), nullable=False)
 
 ###############################################  app context processors ###############################################
 
@@ -490,7 +508,7 @@ def home():
         sheet = workbook.active
         
         next_row = find_next_available_row(sheet)
-        
+         
         field_to_column = {
             "employee_name": 'A',
             "employee_id": 'B',
@@ -576,6 +594,16 @@ def home():
                     actual_to_target_mapping[key] = target_key   
 
         results = {}
+        employee_id = form_data['employee_id']
+        form_today_date = datetime.strptime(form_data['today_date'], '%Y-%m-%d')
+        month = form_today_date.month
+        previous_month = month - 1 if month > 1 else 12
+        month_str=str(month).zfill(2)
+        previous_month_str = str(previous_month).zfill(2)
+        first_entry = not db.session.query(Dform).filter_by(employee_id=employee_id).first()
+        if not first_entry and not has_previous_month_entry(employee_id,month):
+            flash(f"Please complete current month before proceeding to {monthsDict[month_str]}", "error")
+            return redirect(request.referrer)
         designation = form_data.get("designation", "")
         attendance_input = form_data.get("att", 0)
         if designation == "Intern":
@@ -743,7 +771,7 @@ def home():
         # Add to DB and commit the session
         db.session.add(new_entry)
         db.session.commit()
-        
+        flash("Form submitted sucessfully!","success")
         
         return redirect(url_for('home'))
     return render_template('index.html',role=role)
@@ -1394,7 +1422,7 @@ def view_dscore():
         search_query = request.args.get('search', '').strip().lower()
         selected_date = request.args.get('date') 
         selected_month = request.args.get('month',current_month)
-        print("this is selected_month",selected_month)
+        
         selected_year=request.args.get('year',current_year)
         if selected_month.isdigit():  # Only convert if it's numeric
             current_month_formatted = datetime.strptime(selected_month, "%m").strftime("%B")
@@ -1404,9 +1432,12 @@ def view_dscore():
         except ValueError:
             current_month_formatted = datetime.now().strftime("%B")  # Fallback if invalid input
         current_year_formatted = str(selected_year)    
-        print("month",selected_month)
+        
         if role =="manager":    
-            employees_under_manager = Employee_information.query.filter(func.lower(Employee_information.reporting_manager)==user_name).all()
+            employees_under_manager = Employee_information.query.filter( or_(
+                func.lower(Employee_information.reporting_manager) == user_name,
+                func.lower(Employee_information.actual_reporting_manager) == user_name
+            )).all()
             filtered_employees=[]
             for emp in employees_under_manager:
                 matched_employees = get_first_filtered_employees(
@@ -1418,7 +1449,10 @@ def view_dscore():
                 )
                 emp_id = db.session.query(Employee_information.emp_id).filter(
                     Employee_information.emp_email == emp.emp_email
-                ).scalar()
+                ).first()
+                if emp_id:
+                    emp_id = emp_id[0]
+                    
                 # project_status = db.session.query(Target_columns.status).filter(
                 #     ProjectTargets.employee_email == emp.emp_email,
                 #     ProjectTargets.month == selected_month,
@@ -1431,7 +1465,19 @@ def view_dscore():
                 ).first()
                 project_status = project_status[0] if project_status else None
                 project_status=status_mapping.get(project_status, "Targets not set")
-                print("project_status",project_status)
+                
+                approval_record = db.session.query(DmaxApprovals).filter_by(
+                    employee_email=emp.emp_id,
+                    approved_month=selected_month,
+                    approved_year=selected_year
+                ).first()
+
+                if approval_record:
+                    approval_status = approval_record.status.capitalize()  # e.g., "Approved", "Rejected", etc.
+                else:
+                    approval_status = None
+                is_actual_manager = emp.reporting_manager.lower() == user_name.lower()
+                print(is_actual_manager,approval_status)
                 # query = Dform.query.filter_by(employee_email=emp.emp_email)
                 # if search_query:
                 #     # Use = for exact match (case-sensitive)
@@ -1468,11 +1514,13 @@ def view_dscore():
                             "new_initiatives": averages["avg_new_initiatives"],
                             "Dmax_score": averages["avg_Dmax_score"],
                             "project":emp.emp_project,
-                            "project_status":project_status
+                            "project_status":project_status,
+                            "approval_status":approval_status,
+                            "is_actual_manager":is_actual_manager
                         }
                         )
-                        print("filtered_employees",filtered_employees)
-            return render_template("view_dscore.html",employees=filtered_employees,role=role,search_query=search_query, selected_month=selected_month, selected_date=selected_date,selected_year=int(selected_year),years=years)        
+                        
+            return render_template("view_dscore.html",employees=filtered_employees,role=role,search_query=search_query, selected_month=selected_month, selected_date=selected_date,selected_year=int(selected_year),years=years,is_actual_manager=is_actual_manager)        
 
         if role=="crewmate":
              
@@ -1488,6 +1536,7 @@ def view_dscore():
                 first_entry = matched_employees.first()
                 if first_entry:
                     averages = get_averages_for_filtered_employees(matched_employees)  # Compute averages ONCE
+                    
                     if averages:
                         emp_id = db.session.query(Employee_information.emp_id).filter(
                             Employee_information.emp_email == email
@@ -1498,6 +1547,15 @@ def view_dscore():
                             Target_columns.target_year == current_year_formatted
                         ).scalar()
                         project_status=status_mapping.get(project_status, "Targets not set")
+                        approval_record = db.session.query(DmaxApprovals).filter_by(
+                            employee_email=first_entry.employee_id,  # ✅ Use employee_id instead of emp_id
+                            approved_month=selected_month,
+                            approved_year=selected_year
+                        ).first()
+                        if approval_record:
+                            approval_status = approval_record.status.capitalize()  # e.g., "Approved", "Rejected", etc.
+                        else:
+                            approval_status = None
                         filtered_employees.append(
                             {
                                 "id": first_entry.id if first_entry else None,  # No employee ID needed for crewmates, or use an appropriate field
@@ -1512,7 +1570,8 @@ def view_dscore():
                                 "new_initiatives": averages["avg_new_initiatives"],
                                 "Dmax_score": averages["avg_Dmax_score"],
                                 "project":first_entry.project,
-                                "project_status": project_status
+                                "project_status": project_status,
+                                "approval_status":approval_status
                             }
                         )
                     
@@ -1534,7 +1593,9 @@ def view_dscore():
                 )
                 emp_id = db.session.query(Employee_information.emp_id).filter(
                     Employee_information.emp_email == emp.emp_email
-                ).scalar()
+                ).first()
+                if emp_id:
+                    emp_id = emp_id[0]
                 project_status = db.session.query(Target_columns.status).filter(
                     Target_columns.emp_id == emp_id,  # Query for a single employee
                     Target_columns.target_month == current_month_formatted,
@@ -1542,6 +1603,29 @@ def view_dscore():
                 ).first()
                 project_status = project_status[0] if project_status else None
                 project_status=status_mapping.get(project_status, "Targets not set")
+                project_name = db.session.query(Employee_information.emp_project).filter(
+                    Employee_information.emp_id == emp_id
+                ).first() if emp_id else None
+                
+
+                project_name = project_name[0] if project_name else None
+                approval_manager_row = db.session.query(ProjectTargets.ApprovalManager).filter(
+                    ProjectTargets.Project == project_name
+                ).first()
+                approval_manager_row = approval_manager_row[0] if approval_manager_row else None
+                is_approval_manager = user_name.lower() == approval_manager_row.lower()
+                 
+                approval_record = db.session.query(DmaxApprovals).filter_by(
+                    employee_email=emp.emp_id,
+                    approved_month=selected_month,
+                    approved_year=selected_year
+                ).first()
+                if approval_record:
+                    approval_status=approval_record.status
+                else:
+                    approval_status=None    
+                print(emp_id,project_name,approval_manager_row,approval_status)
+                
                 # If matched employees exist, calculate averages
                 if matched_employees.count() > 0:
                     averages = get_averages_for_filtered_employees(matched_employees)
@@ -1565,7 +1649,9 @@ def view_dscore():
                                 "new_initiatives": averages["avg_new_initiatives"],
                                 "Dmax_score": averages["avg_Dmax_score"],
                                 "project":emp.emp_project,
-                                "project_status": project_status
+                                "project_status": project_status,
+                                "approval_status": approval_status,
+                                "is_approval_manager": is_approval_manager
                             }
                         )
 
@@ -2643,10 +2729,42 @@ def delete_employee_data():
     Dform.query.filter(Dform.id.in_(ids_to_delete)).delete()
     db.session.commit()
     return jsonify({"success": True})
+
+@app.route('/approve_employee', methods=['POST'])
+def approve_employee():
+    
+    data = request.json 
+    print("data",data) # Get JSON data from the request
+    email = data.get("email")
+    month = data.get("month")
+    year = data.get("year")
+    existing_approval = DmaxApprovals.query.filter_by(
+        employee_email=email,
+        approved_month=month,
+        approved_year=year
+    ).first()
+
+    if existing_approval:
+       existing_approval.status = "Approved"
+
+    # Add new approval entry
+    new_approval = DmaxApprovals(
+        employee_email=email,
+        approved_month=month,
+        approved_year=year,
+        status="waiting for approval"
+    )
+    db.session.add(new_approval)
+    db.session.commit()
+
+    return jsonify({"success": True, "message": "Approval recorded"})
+
+
 with app.app_context():
         
         db.create_all()
         
+
 
 if __name__ == "__main__":
     app.run(debug=True)
