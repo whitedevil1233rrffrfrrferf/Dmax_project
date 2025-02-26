@@ -1,5 +1,6 @@
 from io import BytesIO
 from flask import Flask,render_template,request,redirect, send_file,url_for,jsonify,flash,session
+
 from dotenv import load_dotenv
 import os
 from openpyxl import load_workbook
@@ -15,6 +16,8 @@ from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '0'
 app=Flask(__name__)
+
+
 CLIENT_ID = os.environ.get('CLIENT_ID')
 CLIENT_SECRET = os.environ.get('CLIENT_SECRET')
 REDIRECT_URI='http://127.0.0.1:5000/call_back'
@@ -252,6 +255,8 @@ designations=['Intern','Jr.QA Engineer','QA Engineer','Sr.QA Engineer','QA Lead'
 
 ###############################################  Database classes ###############################################
 
+
+
 class Dform(db.Model):
     __tablename__ = 'login'
     __bind_key__="dform"
@@ -481,6 +486,8 @@ def get_attr(obj, attr):
     """Fetches an attribute from an object safely."""
     return getattr(obj, attr, 'N/A')
 
+
+
 ###############################################  app routes ###############################################
 
 @app.route('/form',methods=["GET","POST"])
@@ -490,13 +497,13 @@ def home():
         employee = Employee.query.filter_by(emp_id=username).first()
         if employee:
             role = employee.role
-            print(role)
+            
     elif 'email' in session:
         email=session['email']
         employee=Employee.query.filter_by(email=email).first()
         if employee:
             role=employee.role
-            print(role)                  
+                              
     else:
        
         return redirect(url_for('sign'))
@@ -601,9 +608,29 @@ def home():
         month_str=str(month).zfill(2)
         previous_month_str = str(previous_month).zfill(2)
         first_entry = not db.session.query(Dform).filter_by(employee_id=employee_id).first()
-        if not first_entry and not has_previous_month_entry(employee_id,month):
-            flash(f"Please complete current month before proceeding to {monthsDict[month_str]}", "error")
-            return redirect(request.referrer)
+        form_today_date = datetime.strptime(form_data['today_date'], '%Y-%m-%d')
+        month = form_today_date.month
+        year = form_today_date.year
+        previous_month = month - 1 if month > 1 else 12
+        previous_year = year if month > 1 else year - 1
+        if first_entry:
+            # If first entry, only allow submission for the current month
+            if month != datetime.today().month or year != datetime.today().year:
+                flash("You can only submit the form for the current month as this is your first entry.", "error")
+                return redirect(request.referrer)
+        else:
+            previous_approval = db.session.query(DmaxApprovals).filter_by(
+                employee_email=form_data['employee_id'],
+                approved_month=previous_month,
+                approved_year=previous_year,
+                status="Approved"
+            ).first()
+            if not previous_approval:
+                flash(f"Please get {monthsDict[previous_month_str]}'s data approved before proceeding.", "error")
+                return redirect(request.referrer)
+        # if not first_entry and not has_previous_month_entry(employee_id,month):
+        #     flash(f"Please complete current month before proceeding to {monthsDict[month_str]}", "error")
+        #     return redirect(request.referrer)
         designation = form_data.get("designation", "")
         attendance_input = form_data.get("att", 0)
         if designation == "Intern":
@@ -793,6 +820,7 @@ def sign():
 
         if employee and employee.password == password:
             session.clear()
+            
             session['username'] = username
             role=employee.role
             if role=="super_admin":
@@ -1166,6 +1194,7 @@ def employee_upload():
     return render_template("employee_upload.html")
 
 @app.route("/dmax_table", methods=["GET", "POST"])
+
 def dmax_table():
     default_page_size = 10
     page_size_options = [10, 20, 30, 'All']
@@ -2538,8 +2567,14 @@ def set_targets(emp_id):
     role=request.args.get('role')
     target_month = request.form.get("target_month")
     target_year = request.form.get("target_year")
+    
     current_year=datetime.now().year
     current_year=int(current_year)
+    current_month_check=datetime.now().strftime("%B")
+    current_year_check = str(datetime.now().year)
+    
+    
+    
     # current_month_formatted=datetime.now().strftime('%B')
     # current_year_formatted = str(datetime.now().year)
     month_order = case(
@@ -2550,7 +2585,11 @@ def set_targets(emp_id):
     years=last_ten_years
     employee=Employee_information.query.filter_by(emp_id=emp_id).first()
     first_entry_check = Target_columns.query.filter_by(emp_id=emp_id).first()
-    previous_entry = None  
+    # if first_entry_check is None:  # This means it's their first entry
+    #     if target_year != current_year_check or target_month != current_month_check:
+    #         flash(f"For the first entry, you can only set a target for {current_month_check} {current_year_check}.", "warning")
+    #         return redirect(url_for("set_targets", emp_id=emp_id, role=role))
+    #     previous_entry = None  
     if target_month and target_year and first_entry_check:  
         target_year = int(target_year)  
         target_month_num = monthsDict_2.get(target_month)  
@@ -2565,7 +2604,7 @@ def set_targets(emp_id):
         prev_month_name = [month for month, num in monthsDict_2.items() if num == prev_month_num][0]
 
         previous_entry = Target_columns.query.filter_by(
-            emp_id=emp_id, target_month=prev_month_name, target_year=str(prev_year)
+            emp_id=emp_id, target_month=prev_month_name, target_year=str(prev_year),status="approved"
         ).first()
     target_user = Target_columns.query.filter_by(emp_id=emp_id, status="waiting for approval")\
     .order_by(Target_columns.target_year.desc(),
@@ -2582,13 +2621,16 @@ def set_targets(emp_id):
     if target_user:
         fields = {column.name: getattr(target_user, column.name) for column in Target_columns.__table__.columns}
     current_year=current_year
-    print(current_year)     
+        
     if request.method=="POST":
         role=request.args.get('role')
         month_formatted=request.form.get("target_month")
         year_formatted=str(request.form.get("target_year"))
-        print(type(year_formatted))
-        print("target month is",month_formatted)
+        if first_entry_check is None:
+            if year_formatted != current_year_check or month_formatted != current_month_check:
+                flash(f"For the first target entry,Please set a target for {current_month_check} {current_year_check}.", "warning")
+                return redirect(url_for("set_targets", emp_id=emp_id, role=role))
+            previous_entry = None 
         existing_approved_entry = Target_columns.query.filter_by(
             emp_id=emp_id,
             target_month=month_formatted,
@@ -2600,7 +2642,7 @@ def set_targets(emp_id):
             return redirect(url_for("set_targets",emp_id=emp_id,role="Project Lead"))  # Redirect to the same page
 
         if first_entry_check and not previous_entry:
-            flash(f"Please complete the target for {prev_month_name} {prev_year} first!", "warning")
+            flash(f"{prev_month_name}'s target has to be approved first!", "warning")
             return redirect(url_for("set_targets", emp_id=emp_id, role=role))
         if target_month_user:
             for field, value in request.form.items():
