@@ -1077,6 +1077,7 @@ def employee_upload():
                 "Reporting manager":"actual_reporting_manager"
             # Add more mappings as per your Excel file
             }
+            required_fields = list(column_mapping.values())
             mapped_columns = {column_mapping[h]: idx for idx, h in enumerate(headers) if h in column_mapping}
             
             processed_employees = set()
@@ -1084,6 +1085,13 @@ def employee_upload():
             for row in ws.iter_rows(min_row=2, values_only=True):
                 
                 employee_data = {db_field: row[idx] for db_field, idx in mapped_columns.items()}
+                if all(value is None for value in employee_data.values()):
+                    continue  
+                filled_fields = [field for field in required_fields if employee_data.get(field)]
+
+                if 0 < len(filled_fields) < len(required_fields):  # If only some required fields are filled
+                    flash(f"Row skipped: Incomplete data provided. Please fill all required fields.", "danger")
+                    continue 
                 if "emp_designation" in employee_data:
                     designation = employee_data["emp_designation"]				                    
                     
@@ -1096,6 +1104,26 @@ def employee_upload():
                     }
                     
                     # If the designation needs correction, apply it
+                    
+                    emp_email = employee_data.get("emp_email", "")
+                    emp_id = employee_data.get("emp_id", "")
+                    emp_name=employee_data.get("emp_name", "")            
+                                    
+                    existing_employee_data = (
+                        db.session.query(Employee_information)
+                        .filter(
+                            or_(
+                                func.lower(Employee_information.emp_email) == emp_email.lower(),
+                                Employee_information.emp_id == emp_id,
+                                func.lower(Employee_information.emp_name) == emp_name.lower(),
+                            )
+                        )
+                        .first()
+                    )
+
+                    if existing_employee_data:
+                        flash(f"Employee with email '{emp_email}', ID '{emp_id}', or name '{emp_name}' already exists. Skipping entry.", "danger")
+                        continue 
                     employee_data["emp_designation"] = corrections.get(designation, designation)
                 if 'emp_date' in employee_data:
                     emp_date = employee_data['emp_date']
@@ -1112,8 +1140,13 @@ def employee_upload():
                         except ValueError:
                             print("Incorrect date format")
                             emp_date = None   
-                if all(value is None for value in employee_data.values()):
-                    continue               
+                   
+                emp_name = employee_data.get("emp_name")
+                emp_email = employee_data.get("emp_email")
+                actual_reporting_manager = employee_data.get("actual_reporting_manager")
+                if not emp_name or not emp_email:
+                    continue
+                        
                 if 'emp_name' in employee_data:
                     emp_name = employee_data['emp_name']
                     actual_reporting_manager = employee_data.get('actual_reporting_manager')
@@ -1154,11 +1187,7 @@ def employee_upload():
                     #     except Exception as e:
                     #         print(e)
                     #         flash("Failed to update emp_date for existing employees.", "danger")          
-                            
-                            
-                
-                
-            
+
                 employee = Employee_information(**employee_data)
                 # emp_id = employee_data['emp_id']
                 # target_month = employee_data['target_month']
@@ -1189,7 +1218,7 @@ def employee_upload():
             db.session.commit() 
             
         except Exception as e:
-            print(e)   
+            print("e",e)   
             flash("Failed to upload employees. Please check the sample file.", "danger")
     return render_template("employee_upload.html")
 
@@ -1467,6 +1496,7 @@ def view_dscore():
                 func.lower(Employee_information.reporting_manager) == user_name,
                 func.lower(Employee_information.actual_reporting_manager) == user_name
             )).all()
+            is_actual_manager = False
             filtered_employees=[]
             for emp in employees_under_manager:
                 matched_employees = get_first_filtered_employees(
@@ -1636,13 +1666,13 @@ def view_dscore():
                     Employee_information.emp_id == emp_id
                 ).first() if emp_id else None
                 
-
+                
                 project_name = project_name[0] if project_name else None
                 approval_manager_row = db.session.query(ProjectTargets.ApprovalManager).filter(
                     ProjectTargets.Project == project_name
                 ).first()
                 approval_manager_row = approval_manager_row[0] if approval_manager_row else None
-                is_approval_manager = user_name.lower() == approval_manager_row.lower()
+                is_approval_manager = user_name.lower() == approval_manager_row.lower() if approval_manager_row else None
                  
                 approval_record = db.session.query(DmaxApprovals).filter_by(
                     employee_email=emp.emp_id,
@@ -2676,6 +2706,9 @@ def project_targets():
         db_columns = [column_mapping.get(header, header) for header in excel_headers]
         for row in ws.iter_rows(min_row=2, values_only=True):
             if not any(row):  # Skip empty rows
+                continue
+            if any(cell is None or cell == "" for cell in row):  # Check if any column is empty
+                flash(f"Skipping row with missing data", "danger")
                 continue
             data_dict = dict(zip(db_columns, row))
             project_name = data_dict.get("Project")
