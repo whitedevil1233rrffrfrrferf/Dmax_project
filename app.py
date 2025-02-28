@@ -619,15 +619,17 @@ def home():
                 flash("You can only submit the form for the current month as this is your first entry.", "error")
                 return redirect(request.referrer)
         else:
-            previous_approval = db.session.query(DmaxApprovals).filter_by(
-                employee_email=form_data['employee_id'],
-                approved_month=previous_month,
-                approved_year=previous_year,
-                status="Approved"
-            ).first()
-            if not previous_approval:
-                flash(f"Please get {monthsDict[previous_month_str]}'s data approved before proceeding.", "error")
-                return redirect(request.referrer)
+            if month != datetime.today().month or year != datetime.today().year:
+                if month > 1:
+                    previous_approval = db.session.query(DmaxApprovals).filter_by(
+                        employee_email=form_data['employee_id'],
+                        approved_month=previous_month,
+                        approved_year=previous_year,
+                        status="Approved"
+                    ).first()
+                    if not previous_approval:
+                        flash(f"Please get {monthsDict[previous_month_str]}'s data approved before proceeding.", "error")
+                        return redirect(request.referrer)
         # if not first_entry and not has_previous_month_entry(employee_id,month):
         #     flash(f"Please complete current month before proceeding to {monthsDict[month_str]}", "error")
         #     return redirect(request.referrer)
@@ -1345,7 +1347,16 @@ def team_dmax_table():
         selected_month_name = monthsDict.get(selected_month)
         employees_under_projects = []
         if role=="admin" or role=="super_admin":
-            employees_under_manager =Employee_information.query
+            projects_under_manager = ProjectTargets.query.with_entities(ProjectTargets.Project).filter(
+                func.lower(ProjectTargets.ApprovalManager) == user_name.lower()
+            ).all()
+            project_names = [proj[0] for proj in projects_under_manager]
+            if project_names:
+                employees_under_manager = Employee_information.query.filter(
+                    Employee_information.emp_project.in_(project_names)
+                )
+            else:
+                employees_under_manager = Employee_information.query.filter(False)
         if role=="manager":    
             employees_under_manager = Employee_information.query.filter(func.lower(Employee_information.reporting_manager)==user_name)
         elif role == "crewmate":
@@ -2576,7 +2587,8 @@ def form_bulk_upload():
             # Map the columns to the appropriate fields and get the .value for each formula
             for field, col_index in field_to_column.items():
                 cell_value = row[col_index]  # Directly get the value
-
+                if field == "today_date" and isinstance(cell_value, datetime):
+                    row_data[field] = cell_value.date().strftime("%Y-%m-%d")    
                 if field in ["production", "quality", "attendance", "skill", "new_initiatives", "Dmax_score"]:
                     if isinstance(cell_value, (int, float)):  # Ensure it's numeric before multiplying
                         row_data[field] = round(cell_value * 100, 2)  # Convert to percentage
@@ -2624,18 +2636,20 @@ def set_targets(emp_id):
         target_year = int(target_year)  
         target_month_num = monthsDict_2.get(target_month)  
 
-        prev_month_num = target_month_num - 1
-        prev_year = target_year
+        if target_month_num == 1:
+            previous_entry=None
+        else:
 
-        if prev_month_num == 0:  
-            prev_month_num = 12
-            prev_year -= 1
+            prev_month_num = target_month_num - 1
+            prev_year = target_year
 
-        prev_month_name = [month for month, num in monthsDict_2.items() if num == prev_month_num][0]
-
-        previous_entry = Target_columns.query.filter_by(
-            emp_id=emp_id, target_month=prev_month_name, target_year=str(prev_year),status="approved"
-        ).first()
+            
+        
+            prev_month_name = [month for month, num in monthsDict_2.items() if num == prev_month_num][0]
+            
+            previous_entry = Target_columns.query.filter_by(
+                emp_id=emp_id, target_month=prev_month_name, target_year=str(prev_year),status="approved"
+            ).first()
     target_user = Target_columns.query.filter_by(emp_id=emp_id, status="waiting for approval")\
     .order_by(Target_columns.target_year.desc(),
               month_order.desc(),  # Sort by the numeric value of the month
@@ -2655,8 +2669,11 @@ def set_targets(emp_id):
     if request.method=="POST":
         role=request.args.get('role')
         month_formatted=request.form.get("target_month")
+        
         year_formatted=str(request.form.get("target_year"))
-        if first_entry_check is None:
+        target_month = request.form.get("target_month")
+        target_month_num = monthsDict_2.get(target_month)  
+        if target_month_num != 1 and first_entry_check is None:
             if year_formatted != current_year_check or month_formatted != current_month_check:
                 flash(f"For the first target entry,Please set a target for {current_month_check} {current_year_check}.", "warning")
                 return redirect(url_for("set_targets", emp_id=emp_id, role=role))
@@ -2671,9 +2688,15 @@ def set_targets(emp_id):
             flash("An approved Dmax score already exists for this month", "warning")
             return redirect(url_for("set_targets",emp_id=emp_id,role="Project Lead"))  # Redirect to the same page
 
-        if first_entry_check and not previous_entry:
-            flash(f"{prev_month_name}'s target has to be approved first!", "warning")
-            return redirect(url_for("set_targets", emp_id=emp_id, role=role))
+        if target_month_num != 1 and first_entry_check and not previous_entry:
+            existing_entry = Target_columns.query.filter_by(
+                emp_id=emp_id,
+                target_month=month_formatted,
+                target_year=year_formatted
+            ).first()
+            if not existing_entry:
+                flash(f"{prev_month_name}'s target has to be approved first!", "warning")
+                return redirect(url_for("set_targets", emp_id=emp_id, role=role))
         if target_month_user:
             for field, value in request.form.items():
                 
