@@ -226,7 +226,9 @@
                 <a href="{{ request.path }}?{{ request.query_string.decode() }}&download_excel=1" class="btn btn-primary">
                     Download Excel
                 </a>
-                <button id="deleteSelected" class="btn btn-danger">Delete Selected</button>
+                {% if role != "crewmate" and approved != "Yes" %}
+                    <button id="deleteSelected" class="btn btn-danger">Delete Selected</button>
+                {% endif %}
             </div>
             
     <script>

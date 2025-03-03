@@ -124,11 +124,11 @@
                                     {% endif %}
                                 {% endif %}
                                 {% if not emp.is_approval_manager and not emp.is_actual_manager %}
-                                    {{ emp.approval_status if emp.approval_status else "Not approved" }}
+                                    {{ emp.approval_status if emp.approval_status else "Pending" }}
                                 {% endif %}
                               </td>
                               <td>
-                                <a href="{{ url_for('full_table_view',id=emp.employee_id,project=emp.project) }}">
+                                <a href="{{ url_for('full_table_view',id=emp.employee_id,project=emp.project, month=selected_month, year=selected_year) }}">
                                   <i class="fa-solid fa-eye" style="color: black;"></i>
                                 </a>
                               </td>

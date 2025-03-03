@@ -243,6 +243,14 @@ monthsDict_2 = {
     "September": 9, "October": 10, "November": 11, "December": 12
 }
 
+corrections = {
+                    "SrQAEngineer": "Sr.QA Engineer",
+                    "Sr QA Engineer": "Sr.QA Engineer",
+                    "QAEngineer": "QA Engineer",
+                    "JrQAEngineer": "Jr.QA Engineer",
+                    "Jr QA Engineer": "Jr.QA Engineer",
+                    "QALead": "QA Lead"
+                    }
 
 ###############################################  Helper Variables ###############################################
 
@@ -599,10 +607,15 @@ def home():
                 target_key = key.replace('_actual', '_target')  # Replace '_actual' with '_target'
                 if target_key in field_to_column:  # Check if target_key exists
                     actual_to_target_mapping[key] = target_key   
-
+        
         results = {}
         employee_id = form_data['employee_id']
         form_today_date = datetime.strptime(form_data['today_date'], '%Y-%m-%d')
+        existing_entry = Dform.query.filter_by(today_date=form_data['today_date'], employee_email=form_data['employee_email']).first()
+        if existing_entry:
+            
+            flash("An entry for this date already exists!", "warning")
+            return redirect(request.referrer)
         month = form_today_date.month
         previous_month = month - 1 if month > 1 else 12
         month_str=str(month).zfill(2)
@@ -695,13 +708,16 @@ def home():
         if form_data['client_esc'] == 1:  # Check if BG (Client Escalations) is 1
             results['BO'] = 0  # Set BO to 0 if BG is 1
         else:
-            sum_invalid_defects_to_test_cases = (
-                form_data['inv_defs'] +  # BE: Invalid Defects
-                form_data['spel_errors'] +  # BF: Spelling Errors
-                form_data['client_esc'] +  # BG: Client Escalations
-                form_data['tst_cases_missing']  # BH: Test Cases Missing
-            )       
-            results['BO'] = ((100 - sum_invalid_defects_to_test_cases) * 0.4 / 100) * 100
+            if results['BN']==0:
+                results['BO']=0
+            else:    
+                sum_invalid_defects_to_test_cases = (
+                    form_data['inv_defs'] +  # BE: Invalid Defects
+                    form_data['spel_errors'] +  # BF: Spelling Errors
+                    form_data['client_esc'] +  # BG: Client Escalations
+                    form_data['tst_cases_missing']  # BH: Test Cases Missing
+                )       
+                results['BO'] = ((100 - sum_invalid_defects_to_test_cases) * 0.4 / 100) * 100
             # results['BP'] = int((form_data['att'] * 1 * 10 / 100) * 100) 
             # results['BP']=0
             # results['BQ'] = int(((form_data['dtouch'] * 10 / 100 / 100) * 100)*100)
@@ -718,7 +734,10 @@ def home():
             results['BS']=0
             results['BQ']=0
             results['BR']=0
+
+        
             
+
         new_entry = Dform(
             employee_name=form_data['employee_name'],
             employee_id=form_data['employee_id'],
@@ -962,6 +981,8 @@ def search_employee():
         if emp.reporting_manager == logged_in_user_name:
             # Include employee details in the response if the employee's reporting manager matches
             employee_details = {column.name: getattr(emp, column.name) for column in Employee_information.__table__.columns}
+            if "emp_designation" in employee_details:
+                employee_details["emp_designation"] = corrections.get(employee_details["emp_designation"], employee_details["emp_designation"])
             matched_targets = Target_columns.query.filter(
                 Target_columns.emp_id == emp.emp_id,
                 Target_columns.status == "approved",
@@ -1036,16 +1057,18 @@ def edit_employee(employee_id):
     # Retrieve employee data from the database based on employee_id
     
     employee =Employee_information.query.get(employee_id)
+    if employee:
+        employee.emp_designation = corrections.get(employee.emp_designation, employee.emp_designation)
     projects=['Akyrian','Auxo','Avanti','Bench','Fora Travels','Indihood','IPS','IQHive','LevelBlue','Web Development','Opus Clip','Training']
     designations=['Intern','Jr.QA Engineer','QA Engineer','Sr.QA Engineer','QA Lead']
     if request.method == 'POST':
-        
+        print
         # Update the employee data with form values
         employee.emp_name = request.form['emp_name']
         employee.emp_id=request.form['emp_id']
         employee.emp_email = request.form['emp_email']
         employee.emp_project = request.form['emp_project']
-        employee.emp_designation = request.form['emp_designation']
+        employee.emp_designation = corrections.get(request.form['emp_designation'], request.form['emp_designation'])
         employee.reporting_manager=request.form['rep_manager']
         # Save the updated data back to the database
         
@@ -1814,6 +1837,11 @@ def operational_excellence(emp_id):
 
 @app.route("/full_table_view/<string:id>", methods=['GET'])
 def full_table_view(id):
+    user_name = get_logged_in_user_details()
+    if user_name:
+        
+        role = user_name['role']
+        
     project=request.args.get('project')
     
     base_query = Dform.query.filter_by(employee_id=id)
@@ -1821,13 +1849,22 @@ def full_table_view(id):
     selected_date = request.args.get('date')
     current_month = str(datetime.now().strftime("%m"))
     
-    selected_month = request.args.get('month',current_month)
-    
+    selected_month = request.args.get('month', current_month).zfill(2)
+    selected_month_formatted=int(request.args.get('month', current_month).zfill(1))
     selected_month_name = monthsDict.get(selected_month)
     
     
      
     selected_year = request.args.get('year', current_year)
+    
+    selected_year_formatted = selected_year
+    approval_exists = db.session.query(DmaxApprovals.id).filter_by(
+        employee_email=id,  # Replace `id` with the actual employee identifier
+        approved_month=selected_month,
+        approved_year=selected_year,
+        status="Approved"# If you need to check specifically for an approved status
+    ).first()
+    approved = "Yes" if approval_exists else "No"
     filtered_query=get_first_filtered_employees(base_query, None, selected_month, selected_date, selected_year)
     employee = filtered_query.all() 
     if request.args.get('download_excel') == '1':
@@ -2215,9 +2252,9 @@ def full_table_view(id):
             if category in CATEGORY_TO_COLUMNS:
                 if column in CATEGORY_TO_COLUMNS[category]:  
                     filtered_columns.append(column)
-    print(filtered_columns)                
+                  
     if employee:
-        return render_template("full_table_view.html", employee=employee, ALLOWED_COLUMNS=filtered_columns,TABLE_HEADERS=TABLE_HEADERS,years=years,selected_year=int(selected_year),selected_date=selected_date,monthsDict=monthsDict,current_month=current_month,selected_month=selected_month,project=project)
+        return render_template("full_table_view.html", employee=employee, ALLOWED_COLUMNS=filtered_columns,TABLE_HEADERS=TABLE_HEADERS,years=years,selected_year=int(selected_year),selected_date=selected_date,monthsDict=monthsDict,current_month=current_month,selected_month=selected_month,project=project,role=role,approved=approved)
     return "No data found"
     
 @app.route('/approve_users')
@@ -2832,10 +2869,21 @@ def delete_employee_data():
 def approve_employee():
     
     data = request.json 
-    print("data",data) # Get JSON data from the request
     email = data.get("email")
     month = data.get("month")
+    
     year = data.get("year")
+    first_entry_check = DmaxApprovals.query.filter_by(employee_email=email).count() == 0
+    if not first_entry_check and int(month) > 1:
+        prev_month = int(month) - 1  # Convert month to integer before subtraction
+        prev_year = int(year)
+        previous_approval=DmaxApprovals.query.filter_by(
+            employee_email=email,
+            approved_month=prev_month,
+            approved_year=prev_year
+        ).first()
+        if previous_approval and previous_approval.status != "Approved":
+            return jsonify({"success": False, "message": f"Approval for {prev_month}-{prev_year} is not completed yet!"}), 400
     existing_approval = DmaxApprovals.query.filter_by(
         employee_email=email,
         approved_month=month,

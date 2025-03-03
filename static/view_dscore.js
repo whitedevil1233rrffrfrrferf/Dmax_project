@@ -1,3 +1,8 @@
+const monthsDict = {
+    "1": "January", "2": "February", "3": "March", "4": "April",
+    "5": "May", "6": "June", "7": "July", "8": "August",
+    "9": "September", "10": "October", "11": "November", "12": "December"
+};
 function handleFilters() {
     const date=document.getElementById("date").value
     const month=document.getElementById("month").value
@@ -29,8 +34,9 @@ document.querySelectorAll('.approve-btn').forEach(button => {
         const email = this.dataset.email;
         const month = this.dataset.month;
         const year = this.dataset.year;
-        const confirmApproval = confirm(`Are you sure you want to approve the targets for ${month} ${year}?`);
-
+        const monthName = monthsDict[month] || month;
+        const confirmApproval = confirm(`Are you sure you want to approve the targets for ${monthName} ${year}?`);
+        
         if (!confirmApproval) {
             return;  // ⛔ Stop execution if user cancels
         }
@@ -43,7 +49,7 @@ document.querySelectorAll('.approve-btn').forEach(button => {
             if (data.success) {
                 location.reload();  // ✅ Reload to fetch updated approval status
             } else {
-                alert("Approval failed!");
+                alert("Previous month scores has to be approved first.");
             }
         })
         .catch(error => console.error("Fetch error:", error));
