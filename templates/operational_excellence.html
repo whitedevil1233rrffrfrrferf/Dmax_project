@@ -27,18 +27,29 @@
                 <select class="form-select mb-3" id="month" name="month" required>
                     <option value="" selected disabled>Please select a month</option>
                     {% for value, name in months_dict.items() %}
-                        <option value="{{ value }}">{{ name }}</option>
+                        <option value="{{ value }}" {% if selected_month == value %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+                <label for="year" class="form-label">Year</label>
+                <select class="form-select mb-3" id="year" name="year" required>
+                    <option value="" selected disabled>Please select a year</option>
+                    {% for year in years %}
+                        <option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>
+                            {{ year }}
+                        </option>
                     {% endfor %}
                 </select>
                 <div class="mb-3">
                     <label for="dtouch" class="form-label">DTOUCH/Soft Skill</label>
-                    <input type="number" class="form-control" id="dtouch" name="dtouch" required>
+                    <input type="number" class="form-control" id="dtouch" name="dtouch" value="{{ dtouch_score }}" required>
                 </div>
                 
-                <div class="mb-3" >
-                    <label for="newInitiatives" class="form-label">New Initiatives</label>
-                    <input type="text" class="form-control" id="newInitiatives" name="newInitiatives" required >
-                </div>
+                {% if not hide_new_initiatives %}
+                    <div class="mb-3" >
+                        <label for="newInitiatives" class="form-label">New Initiatives</label>
+                        <input type="text" class="form-control" id="newInitiatives" name="newInitiatives" required  value="{{ new_init_score }}">
+                    </div>
+                {% endif %}    
                 <div style="display: flex; justify-content: space-around; margin-top:2rem;">
                     <button type="submit" class="btn btn-primary" style="width:6rem; height:3rem;"">Submit</button>
                     <a class="btn btn-outline-secondary" href="{{url_for('team_dmax_table')}}" style=" width:6rem; height:3rem;">

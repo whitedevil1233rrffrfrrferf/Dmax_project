@@ -94,10 +94,13 @@
                                     <td>{{ emp.project }}</td>
                                     <td>{{ emp.designation }}</td>
                                     <td>{{emp.actual_reporting_manager}}</td>
+                                    
                                     <td>
-                                        <a href="{{ url_for('operational_excellence', emp_id=emp.emp_id) }}">
-                                            <i class="fa-solid fa-clipboard-user" style="color: black !important;"></i>
-                                        </a>
+                                        {% if emp.is_approval_manager %}
+                                            <a href="{{ url_for('operational_excellence', emp_id=emp.emp_id) }}">
+                                                <i class="fa-solid fa-clipboard-user" style="color: black !important;"></i>
+                                            </a>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         {% if emp.has_approved_target %}

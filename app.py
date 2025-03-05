@@ -8,7 +8,7 @@ from flask_sqlalchemy import SQLAlchemy
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
 import json
-from datetime import datetime
+from datetime import datetime,timedelta
 import openpyxl
 from sqlalchemy import case, extract, func, or_
 import requests
@@ -16,11 +16,12 @@ from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '0'
 app=Flask(__name__)
-
-
+application=app
+load_dotenv()
 CLIENT_ID = os.environ.get('CLIENT_ID')
 CLIENT_SECRET = os.environ.get('CLIENT_SECRET')
 REDIRECT_URI='http://127.0.0.1:5000/call_back'
+
 SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile']
 
 
@@ -119,21 +120,17 @@ def get_first_filtered_employees(base_query, search_query, selected_month, selec
         base_query = base_query.filter(extract('year', Dform.today_date) == int(selected_year))    
     return base_query
 
-def get_date_range_for_month(month):
-    current_year = datetime.now().year
-    next_year = current_year
-    month = int(month)  # Convert to integer
-    if month == 1:  
-        
-        prev_month=12
-        next_year=current_year+1
-    else:
-        prev_month=month-1   
-        next_year=current_year 
-    start_date = datetime(current_year, prev_month, 26)
-    end_date = datetime(next_year, month, 25)
+def get_date_range_for_month(month, year):
+    month = int(month)  # Ensure month is an integer
+    start_date = datetime(year, month, 1)  # First day of the month
     
-    return start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
+    if month == 12:  # Handle December case (next month is Jan of next year)
+        next_month = datetime(year + 1, 1, 1)
+    else:
+        next_month = datetime(year, month + 1, 1)  # First day of the next month
+    
+    end_date = next_month - timedelta(days=1)  # Last day of the current month
+    return start_date.date(), end_date.date()
 
 def get_averages_for_filtered_employees(filtered_entries):
     if filtered_entries:
@@ -447,6 +444,7 @@ class OperationalExcellence(db.Model):
     new_init_score = db.Column(db.Float,default=0.0)
     start_date = db.Column(db.String(100))
     end_date = db.Column(db.String(100))
+    year=db.Column(db.Integer, nullable=False)
 
 class ProjectTargets(db.Model):
     __bind_key__="project_targets"
@@ -946,28 +944,28 @@ def search_employee():
     current_month=datetime.now().strftime('%B')
     current_year = str(datetime.now().year)
     target_month = None
-    for month in range(1, 13):  # Loop through all months
-        start_date, end_date = get_date_range_for_month(month)
+    # for month in range(1, 13):  # Loop through all months
+    #     start_date, end_date = get_date_range_for_month(month)
         
-        # Convert start_date and end_date (strings) to datetime.date objects
-        start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
-        end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
-        start_month_day = (start_date.month, start_date.day)
-        end_month_day = (end_date.month, end_date.day)
-        print("start_date",start_month_day)
-        print("end_date",end_month_day)
-        if start_month_day <= end_month_day:
-            # Normal range within the same year
-            if start_month_day <= current_month_day <= end_month_day:
-                target_month = str(month).zfill(2)  # Store the matching month (e.g., "02")
-                print("target_month", target_month)
-                break
-        else:
-            # Range spans across the end of the year
-            if current_month_day >= start_month_day or current_month_day <= end_month_day:
-                target_month = str(month).zfill(2)  # Store the matching month (e.g., "02")
-                print("target_month", target_month)
-                break
+    #     # Convert start_date and end_date (strings) to datetime.date objects
+    #     start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+    #     end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+    #     start_month_day = (start_date.month, start_date.day)
+    #     end_month_day = (end_date.month, end_date.day)
+    #     print("start_date",start_month_day)
+    #     print("end_date",end_month_day)
+    #     if start_month_day <= end_month_day:
+    #         # Normal range within the same year
+    #         if start_month_day <= current_month_day <= end_month_day:
+    #             target_month = str(month).zfill(2)  # Store the matching month (e.g., "02")
+    #             print("target_month", target_month)
+    #             break
+    #     else:
+    #         # Range spans across the end of the year
+    #         if current_month_day >= start_month_day or current_month_day <= end_month_day:
+    #             target_month = str(month).zfill(2)  # Store the matching month (e.g., "02")
+    #             print("target_month", target_month)
+    #             break
     if target_month:
         target_month_string = monthsDict.get(target_month, "Unknown Month")
         
@@ -1253,7 +1251,14 @@ def dmax_table():
     default_page_size = 10
     page_size_options = [10, 20, 30, 'All']
     current_month=str(datetime.now().month)
-    
+    user_details = get_logged_in_user_details()
+    if user_details:
+        project_names = []  # Ensure it's always defined, even if the role is not admin
+
+        user_name=user_details['name']
+        user_email=user_details['email']
+        user_name=user_name.lower()
+        role=user_details['role']
     if request.method == "POST":
         selected_page_size = request.form.get("page_size", default_page_size)
         # Set page_size to None for 'All', or convert to int if numeric
@@ -1284,7 +1289,18 @@ def dmax_table():
     page = request.args.get("page", 1, type=int)
     projects=["Akyrian","Auxo","Avanti","Bench","Fora Travels","Indihood","IPS","IQHive","LevelBlue","Web Development","Opus Clip","Training"]
     designations=["Intern","Jr.QA Engineer","QA Engineer","Sr.QA Engineer","QA Lead"]
-    query=Dform.query
+    projects_under_manager = ProjectTargets.query.with_entities(ProjectTargets.Project).filter(
+        func.lower(ProjectTargets.ApprovalManager) == user_name.lower()
+    ).all()
+
+    project_names = [proj[0] for proj in projects_under_manager]
+
+    # Modify the query to include only employees working on these projects
+    
+
+    query = Dform.query.filter(False)
+    if project_names:
+        query = Dform.query.filter(Dform.project.in_(project_names))
     
     if search_term:
         query = query.filter(func.lower(Dform.employee_name) == search_term.lower())
@@ -1352,6 +1368,8 @@ def dmax_table():
 def team_dmax_table():
     user_details = get_logged_in_user_details()
     if user_details:
+        project_names = []  # Ensure it's always defined, even if the role is not admin
+
         user_name=user_details['name']
         user_email=user_details['email']
         user_name=user_name.lower()
@@ -1451,6 +1469,7 @@ def team_dmax_table():
         
         filtered_employees = []
         for emp in all_accessible_employees:
+                is_approval_manager = True if emp.emp_project in project_names else False
                 filtered_employees.append({
                     "name": emp.emp_name,
                     "project":emp.emp_project,
@@ -1466,7 +1485,8 @@ def team_dmax_table():
                                 else "Employee")
                             ) , # Determine role,
                     "has_approved_target": (emp.emp_id in employees_with_approved_targets) if employees_with_approved_targets else False , # Store whether they have an approved target
-                    "has_pending_target": employees_with_pending_targets.get(emp.emp_id, {})        
+                    "has_pending_target": employees_with_pending_targets.get(emp.emp_id, {}),
+                    "is_approval_manager": is_approval_manager if is_approval_manager else False     
                                         })
                 
         return render_template('team_dmax_table.html',employees=filtered_employees,user_name=user_name,years=last_ten_years,selected_month=selected_month, current_month=current_month,monthsDict=monthsDict,current_year=current_year,selected_year=selected_year,selected_month_name=selected_month_name,projects=projects,selected_project=selected_project)
@@ -1672,7 +1692,26 @@ def view_dscore():
             return render_template("view_dscore.html",employees=filtered_employees,role=role,search_query=search_query, selected_month=selected_month, selected_date=selected_date,selected_year=int(selected_year),years=years)                
                 
         if role == "admin" or role == "super_admin":
-            employees_under_manager = Employee_information.query.all()  # Get all employees under the manager
+            # employees_under_manager = Employee_information.query.all()  # Get all employees under the manager
+            employees_under_manager = Employee_information.query.filter( or_(
+                func.lower(Employee_information.reporting_manager) == user_name,
+                func.lower(Employee_information.actual_reporting_manager) == user_name
+            )).all()
+            projects_under_manager = ProjectTargets.query.with_entities(ProjectTargets.Project).filter(
+                func.lower(ProjectTargets.ApprovalManager) == user_name.lower()
+            ).all()
+
+            # Extract project names from the query result
+            project_names = [proj[0] for proj in projects_under_manager]
+
+            # If the user is an Approval Manager for any project, fetch employees from those projects
+            if project_names:
+                additional_employees = Employee_information.query.filter(
+                    Employee_information.emp_project.in_(project_names)
+                ).all()
+                
+                # Merge both lists without duplicates
+                employees_under_manager = list(set(employees_under_manager + additional_employees))
             filtered_employees = []
 
             for emp in employees_under_manager:
@@ -1717,7 +1756,7 @@ def view_dscore():
                     approval_status=approval_record.status
                 else:
                     approval_status=None    
-                print(emp_id,project_name,approval_manager_row,approval_status)
+                
                 
                 # If matched employees exist, calculate averages
                 if matched_employees.count() > 0:
@@ -1779,12 +1818,23 @@ def delete_employee(id):
 @app.route('/operational_excellence/<string:emp_id>', methods=['GET', 'POST'])
 def operational_excellence(emp_id):
     employee_info = Employee_information.query.filter_by(emp_id=emp_id).first()
+    emp_designation = corrections.get(employee_info.emp_designation, employee_info.emp_designation)
+    
+    hide_new_initiatives = emp_designation in ["Intern", "Jr.QA Engineer"]
+
     op_excellence=OperationalExcellence.query.filter_by(emp_id=emp_id).first()
+    desc_op_excellence = OperationalExcellence.query.filter_by(emp_id=emp_id).order_by(OperationalExcellence.year.desc(), OperationalExcellence.month.desc()).first()
+    selected_month = str(op_excellence.month).zfill(2) if op_excellence and op_excellence.month else ""
+    selected_year = int(op_excellence.year) if op_excellence and op_excellence.year else ""
+    dtouch_score = desc_op_excellence.dtouch_score if desc_op_excellence else 0
+    new_init_score = desc_op_excellence.new_init_score if desc_op_excellence else 0
+
+    
     if not op_excellence:
         op_excellence = OperationalExcellence(
             emp_id=emp_id,
             month=0,
-            
+            year=0,
             dtouch_score=0,
             new_init_score=0
         )
@@ -1792,48 +1842,46 @@ def operational_excellence(emp_id):
         db.session.commit()
     
     if employee_info:
-        designation = employee_info.emp_designation
+        designation = corrections.get(employee_info.emp_designation, employee_info.emp_designation)
         if request.method == 'POST':
-            month=request.form.get('month')
-            
-            # attendance=request.form.get('attendance')
-            dtouch = request.form.get('dtouch')
-            new_init=request.form.get('newInitiatives')
-            # attendance =int(attendance)
-            dtouch=int(dtouch)   
-            new_init=int(new_init) 
+            month = int(request.form.get('month'))  # Ensure it's an integer
+            year = int(request.form.get('year'))
+            dtouch = int(request.form.get('dtouch'))
+            new_init = int(request.form.get('newInitiatives'))
             if designation == "Intern":
                 # attendance = int((attendance * 10 / 100) * 100)
-                dtouch = int(((dtouch * 10 / 100 / 100) * 100) * 100)
+                dtouch = float(((dtouch * 10 / 100 / 100) * 100) )
                 new_init=0
             if designation=="Jr.QA Engineer":
                 # attendance = int((attendance * 5 / 100) * 100)
-                dtouch = int(((dtouch * 10 / 100 / 100) * 100) * 100)
+                dtouch = float(((dtouch * 10 / 100 / 100) * 100))
                 new_init=0
             if designation=="QA Engineer":
                 # attendance = int((attendance * 5 / 100) * 100)
-                dtouch = int(((dtouch * 5 / 100 / 100) * 100) * 100)
-                new_init = int(((new_init * 15 / 100 / 100) * 100) * 100)
+                dtouch = float(((dtouch * 5 / 100 / 100) * 100) )
+                new_init = float(((new_init * 15 / 100 / 100) * 100) )
             if designation=="Sr.QA Engineer":
                 # attendance = int((attendance * 5 / 100) * 100)
-                dtouch = (((dtouch * 5 / 100 / 100) * 100) )
-                new_init = ((new_init * 20 / 100 / 100) * 100)
+                dtouch = float(((dtouch * 5 / 100 / 100) * 100) )
+                new_init = float((new_init * 20 / 100 / 100) * 100)
                 
             if designation=="QA Lead":
                 # attendance = int((attendance * 5 / 100) * 100)
-                dtouch = (((dtouch * 5 / 100 / 100) * 100) )    
-                new_init = ((new_init * 20 / 100 / 100) * 100)
-            start_date,end_date = get_date_range_for_month(month)    
+                dtouch = float(((dtouch * 5 / 100 / 100) * 100) )    
+                new_init = float((new_init * 30 / 100 / 100) * 100)
+            start_date, end_date = get_date_range_for_month(month, year)  
             # op_excellence.attendance_score = attendance
             op_excellence.dtouch_score = dtouch
             op_excellence.new_init_score = new_init    
+            op_excellence.year = year  
             op_excellence.month = month
             op_excellence.start_date = start_date
             op_excellence.end_date = end_date
             db.session.commit()    
 
             
-    return render_template('operational_excellence.html',emp_id=emp_id,months_dict=monthsDict)
+    return render_template('operational_excellence.html',emp_id=emp_id,months_dict=monthsDict,years=last_ten_years,desc_op_excellence=desc_op_excellence,selected_month=selected_month,selected_year=selected_year,dtouch_score=dtouch_score,new_init_score=new_init_score,hide_new_initiatives=hide_new_initiatives)
+
 
 @app.route("/full_table_view/<string:id>", methods=['GET'])
 def full_table_view(id):
@@ -2873,6 +2921,11 @@ def approve_employee():
     month = data.get("month")
     
     year = data.get("year")
+    op_excellence = OperationalExcellence.query.filter_by(
+        emp_id=email, month=month, year=year
+    ).first()
+    if operational_excellence:
+        print("Operational Excellence record found")
     first_entry_check = DmaxApprovals.query.filter_by(employee_email=email).count() == 0
     if not first_entry_check and int(month) > 1:
         prev_month = int(month) - 1  # Convert month to integer before subtraction

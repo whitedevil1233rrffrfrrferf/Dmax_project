@@ -7,13 +7,13 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
   <script src="https://kit.fontawesome.com/9fe3d1bfff.js" crossorigin="anonymous"></script>
   <script src="https://kit.fontawesome.com/9fe3d1bfff.js" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='flash.css') }}">
   <style>
-    body {
-    background-image: url('/static/login_background.jpg');
-    background-size: cover;
-    background-repeat: no-repeat;
-    background-position: center;
-      font-family: 'Roboto', sans-serif;
+   body {
+        background:url("{{ url_for('static', filename='login_background.jpg') }}");
+    }
+    .test{
+        background-image:url("{{ url_for('static', filename='info_div.jpg') }}");
     }
     .form-signin {
       width: 100%;
@@ -54,14 +54,13 @@
             transition: opacity 1s ease-out;
         }
   </style>
+  <script>
+    
+  </script>
 </head>
 <body>
-  
-  <div style="display: flex; align-items: center; margin-left:23%; margin-top:5%;">
-    <div style="height: 29rem; width: 22rem;margin-top:40px; background-image: url('/static/info_div.jpg');
-    background-size: cover;
-    background-repeat: no-repeat;
-    background-position: center;">
+    <div style="display: flex; align-items: center; margin-left:23%; margin-top:5%;">
+    <div style="height: 29rem; width: 22rem;margin-top:40px;" class="test">
       <img src="https://www.qaoncloud.com/public/assets/wp/wp-content/uploads/elementor/thumbs/QAonCloud.svg" title="QAonCloud Logo" alt="QAonCloud Logo" style="width:12rem;">
       <div class="content" style="margin-top: 40px; ">
          <h3 style="color: #fff; text-align: center;">Welcome</h3> 
@@ -69,19 +68,27 @@
       </div>
     </div>
     <div>
-      <form class="form-signin" action="{{url_for('sign')}}" method="post" style=" text-align: center; margin: auto; padding:rem; background-color: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); margin-top:10%; height:29rem; width: 29rem;">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-              {% for category, message in messages %}
-                  <div class="alert alert-{{ category }} flash-message" style="text-align: center; position: absolute; margin-left:2%;">{{ message }}</div>
-              {% endfor %}
-          {% endif %}
-        {% endwith %}
-        <h1 class="h3 mb-3 font-weight-normal" style="margin-bottom:3rem !important;">Login</h1>
+      <form class="form-signin" action="{{url_for('sign')}}" method="post" style=" text-align: center; margin: auto; padding:rem; background-color: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); margin-top:10%; height: 29rem; width: 27rem;">
         
+        <h1 class="h3 mb-3 font-weight-normal" style="margin-bottom:3rem !important;">Login</h1>
         <div>
-          <label for="username" class="sr-only">Employee ID</label>
-          <input type="text" id="username" name="username" class="form-control" placeholder="Username" required="" autofocus="" fdprocessedid="3jwf2b" style="width:75%; margin-left: auto; margin-right: auto; margin-bottom: 2rem;">
+          {% with messages = get_flashed_messages(with_categories=True) %}
+                    {% if messages %}
+                        <div id="flash-messages" style="margin-left: 10%;">
+                            {% for category, message in messages %}
+                                <div class="flash-message {{ category }}">
+                                    <span>{{ message }}</span>
+                                    <button class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+          {% endwith %}
+          </div>
+
+        <div>
+          <label for="username" class="sr-only">Employee ID :</label>
+          <input type="text" id="username" name="username" class="form-control" placeholder="Employee ID" required="" autofocus="" fdprocessedid="3jwf2b" style="width:75%; margin-left: auto; margin-right: auto; margin-bottom: 2rem;">
           <label for="password" class="sr-only" >Password</label>
           <input type="password" id="password" name="password" class="form-control" placeholder="Password" required="" fdprocessedid="ywi4nd" style="width: 75%;  margin-left: auto; margin-right: auto;">
         
@@ -102,16 +109,32 @@
     </div>
     
   </div>
-  <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const flashMessages = document.querySelectorAll('.flash-message');
-        setTimeout(() => {
-            flashMessages.forEach(message => {
-              message.classList.add('fade-out');
-            });
-        }, 1500); // 1 second delay before starting to fade out
-    });
-  </script>
+  <!--<div style="display: flex; align-items: center; margin-left:23%; margin-top:5%;">-->
+  <!--    <div class="test">-->
+  <!--        <img src="https://www.qaoncloud.com/public/assets/wp/wp-content/uploads/elementor/thumbs/QAonCloud.svg" title="QAonCloud Logo" alt="QAonCloud Logo" style="width:12rem;">-->
+  <!--        <div class="content" style="margin-top: 40px; ">-->
+  <!--           <h3 style="color: #fff; text-align: center;">Welcome</h3> -->
+  <!--           <h5 style="color: #fff;margin-top:50px; margin-left: 20%; line-height: 60px;">Sign in  Track your goals and  monitor actual performance.</h5>-->
+  <!--        </div>-->
+  <!--    </div>-->
+  <!--    <div>-->
+  <!--        <form class="form-signin" action="/" method="post" style=" text-align: center; margin: auto; padding:rem; background-color: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); margin-top:10%; height: 29rem; width: 27rem;">-->
+  <!--            <h1 class="h3 mb-3 font-weight-normal" style="margin-bottom:3rem !important;">Login</h1>-->
+  <!--            <div>-->
+  <!--                <label for="username" class="sr-only">Username</label>-->
+  <!--                <input type="text" id="username" name="username" class="form-control" placeholder="Username" required="" autofocus="" fdprocessedid="3jwf2b" style="width:75%; margin-left: auto; margin-right: auto; margin-bottom: 2rem;">-->
+  <!--                <label for="password" class="sr-only" >Password</label>-->
+  <!--                <input type="password" id="password" name="password" class="form-control" placeholder="Password" required="" fdprocessedid="ywi4nd" style="width: 75%;  margin-left: auto; margin-right: auto;">-->
+                
+  <!--            <button class="btn btn-lg btn-primary btn-block" type="submit" fdprocessedid="lgl0q" style="margin-top: 3rem;">Login</button>-->
+  <!--            <a href="{{ url_for('register') }}">sssss</a>-->
+              
+          
+  <!--      </div>-->
+  <!--        </form>    -->
+  <!--    </div>-->
+  <!--</div>-->
+  
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>  
 </body>
 </html>
