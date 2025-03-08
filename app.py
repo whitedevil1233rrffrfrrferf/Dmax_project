@@ -14,7 +14,7 @@ from sqlalchemy import case, extract, func, or_
 import requests
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '0'
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 app=Flask(__name__)
 application=app
 load_dotenv()
@@ -1131,7 +1131,8 @@ def employee_upload():
                     emp_email = employee_data.get("emp_email", "")
                     emp_id = employee_data.get("emp_id", "")
                     emp_name=employee_data.get("emp_name", "")            
-                                    
+                    reporting_manager = employee_data.get("reporting_manager", "").strip().lower()
+                    actual_reporting_manager = employee_data.get("actual_reporting_manager", "").strip().lower()        
                     existing_employee_data = (
                         db.session.query(Employee_information)
                         .filter(
@@ -1146,23 +1147,71 @@ def employee_upload():
 
                     if existing_employee_data:
                         flash(f"Employee with email '{emp_email}', ID '{emp_id}', or name '{emp_name}' already exists. Skipping entry.", "danger")
-                        continue 
+                        continue         
+                    # existing_employee_data = (
+                    #     db.session.query(Employee_information)
+                    #     .filter(
+                    #         or_(
+                    #             func.lower(Employee_information.emp_email) == emp_email.lower(),
+                    #             Employee_information.emp_id == emp_id,
+                    #             func.lower(Employee_information.emp_name) == emp_name.lower(),
+                                
+                    #         )
+                    #     )
+                    #     .first()
+                    # )
+
+                    # if existing_employee_data:
+                    #     if (
+                    #             existing_employee_data.reporting_manager.lower() == reporting_manager
+                    #             and existing_employee_data.actual_reporting_manager.lower() == actual_reporting_manager
+                    #         ):
+                    #         flash(f"Employee with email '{emp_email}', ID '{emp_id}', or name '{emp_name}' already exists. Skipping entry.", "danger")
+                    #         continue 
+                    #     else:
+                    #         existing_employee_data.reporting_manager = reporting_manager
+                    #         existing_employee_data.actual_reporting_manager = actual_reporting_manager
+                    #         db.session.commit()
+                    #         flash(f"Updated reporting manager for employee '{emp_name}' to '{reporting_manager}'.", "success")
                     employee_data["emp_designation"] = corrections.get(designation, designation)
                 if 'emp_date' in employee_data:
                     emp_date = employee_data['emp_date']
 
+                    # if isinstance(emp_date, datetime):
+                    #     emp_date = emp_date.date()  # Removes the time and keeps only the date
+                    #     print("Date without time:", emp_date)
                     if isinstance(emp_date, datetime):
-                        emp_date = emp_date.date()  # Removes the time and keeps only the date
-                        print("Date without time:", emp_date)
+                        # Convert to YYYY-MM-DD string
+                        print("datetime")
+                        emp_date = emp_date.strftime('%Y-%m-%d')
+
+                    elif isinstance(emp_date, (int, float)):
+                        print("int or float")
+
+                        try:
+                            emp_date = datetime(1899, 12, 30) + timedelta(days=int(emp_date))
+                            emp_date = emp_date.strftime('%Y-%m-%d')
+                        except Exception as e:
+                            print("Error converting Excel date:", e)
+                            emp_date = ""  # Set empty string on failure   
 
                     # If emp_date is a string, convert it to a date object
+                    # elif isinstance(emp_date, str):
+                    #     try:
+                    #         emp_date = datetime.strptime(emp_date, '%Y-%m-%d').date()  # Convert to date
+                    #         print("Successfully parsed the date:", emp_date)
+                    #     except ValueError:
+                    #         print("Incorrect date format")
+                    #         emp_date = None
                     elif isinstance(emp_date, str):
+                        print("date_string")
                         try:
-                            emp_date = datetime.strptime(emp_date, '%Y-%m-%d').date()  # Convert to date
-                            print("Successfully parsed the date:", emp_date)
+                            emp_date = datetime.strptime(emp_date, '%Y-%m-%d').date().strftime('%Y-%m-%d')
                         except ValueError:
-                            print("Incorrect date format")
-                            emp_date = None   
+                            print("Incorrect date format, setting to empty string")
+                            emp_date = ""
+                    employee_data['emp_date'] = emp_date        
+   
                    
                 emp_name = employee_data.get("emp_name")
                 emp_email = employee_data.get("emp_email")
@@ -1177,29 +1226,35 @@ def employee_upload():
 
                     if emp_name and emp_date and actual_reporting_manager:
                         # Extract year and month from the new employee entry
-                        new_year, new_month = emp_date.year, emp_date.month
+                        try:
+                            emp_date_obj = datetime.strptime(emp_date, '%Y-%m-%d').date()
+                            new_year, new_month = emp_date_obj.year, emp_date_obj.month
 
-                        # Query the most recent entry of the employee
-                        last_entry = (
-                            db.session.query(Employee_information)
-                            .filter(func.lower(Employee_information.emp_name) == emp_name.lower())
-                            .order_by(Employee_information.emp_date.desc())  # Get most recent entry
-                            .first()
-                        )
+                            # Query the most recent entry of the employee
+                            last_entry = (
+                                db.session.query(Employee_information)
+                                .filter(func.lower(Employee_information.emp_name) == emp_name.lower())
+                                .order_by(Employee_information.emp_date.desc())  # Get most recent entry
+                                .first()
+                            )
 
-                        if last_entry:
-                            last_date = datetime.strptime(last_entry.emp_date, "%Y-%m-%d").date()
-                            last_year, last_month = last_date.year, last_date.month
-                            last_manager = last_entry.actual_reporting_manager
+                            if last_entry:
+                                last_date = datetime.strptime(last_entry.emp_date, "%Y-%m-%d").date()
+                                last_year, last_month = last_date.year, last_date.month
+                                last_manager = last_entry.actual_reporting_manager
 
-                            # Check if it's a duplicate entry
-                            is_duplicate = (new_year == last_year and new_month == last_month and actual_reporting_manager == last_manager)
+                                # Check if it's a duplicate entry
+                                is_duplicate = (new_year == last_year and new_month == last_month and actual_reporting_manager == last_manager)
 
-                            if is_duplicate:
-                                if emp_name not in processed_employees:
-                                    flash(f"Employee '{emp_name}' already exists for {new_month}-{new_year} under the same manager. Skipping entry.", "danger")
-                                    processed_employees.add(emp_name)
-                                continue  # Skip the duplicate entry
+                                if is_duplicate:
+                                    if emp_name not in processed_employees:
+                                        flash(f"Employee '{emp_name}' already exists for {new_month}-{new_year} under the same manager. Skipping entry.", "danger")
+                                        processed_employees.add(emp_name)
+                                    continue  # Skip the duplicate entry
+
+                        except:
+                            print("Error: Could not parse emp_date as date")
+                            new_year, new_month = None, None  # Handle error safely        
 
                 
                     # if emp_date:
@@ -1245,8 +1300,8 @@ def employee_upload():
             flash("Failed to upload employees. Please check the sample file.", "danger")
     return render_template("employee_upload.html")
 
-@app.route("/dmax_table", methods=["GET", "POST"])
 
+@app.route("/dmax_table", methods=["GET", "POST"])
 def dmax_table():
     default_page_size = 10
     page_size_options = [10, 20, 30, 'All']
@@ -1374,13 +1429,14 @@ def team_dmax_table():
         user_email=user_details['email']
         user_name=user_name.lower()
         role=user_details['role']
+        actual_role=role
         selected_month = request.args.get('month')
         selected_year = request.args.get('year')
         selected_year = int(selected_year) if selected_year else None
         current_month = datetime.now().strftime("%m")
         current_year = datetime.now().strftime("%Y")
         selected_project = request.args.get('project')
-        print("selected_project",selected_project)
+        
         if not selected_month:
             selected_month = current_month
         if not selected_year:
@@ -1489,7 +1545,7 @@ def team_dmax_table():
                     "is_approval_manager": is_approval_manager if is_approval_manager else False     
                                         })
                 
-        return render_template('team_dmax_table.html',employees=filtered_employees,user_name=user_name,years=last_ten_years,selected_month=selected_month, current_month=current_month,monthsDict=monthsDict,current_year=current_year,selected_year=selected_year,selected_month_name=selected_month_name,projects=projects,selected_project=selected_project)
+        return render_template('team_dmax_table.html',employees=filtered_employees,user_name=user_name,years=last_ten_years,selected_month=selected_month, current_month=current_month,monthsDict=monthsDict,current_year=current_year,selected_year=selected_year,selected_month_name=selected_month_name,projects=projects,selected_project=selected_project,actual_role=actual_role)
     
     return "No user found or not logged in."  
 
@@ -1506,6 +1562,7 @@ def view_dscore():
         "approved": "Approved",
         "waiting for approval": "In Process"
     }
+    project_names = []
     years = [current_year - i for i in range(11)]
     # ALLOWED_COLUMNS = [
     #     "employee_name", "today_date", "test_case_creation_target",
@@ -1692,6 +1749,7 @@ def view_dscore():
             return render_template("view_dscore.html",employees=filtered_employees,role=role,search_query=search_query, selected_month=selected_month, selected_date=selected_date,selected_year=int(selected_year),years=years)                
                 
         if role == "admin" or role == "super_admin":
+            
             # employees_under_manager = Employee_information.query.all()  # Get all employees under the manager
             employees_under_manager = Employee_information.query.filter( or_(
                 func.lower(Employee_information.reporting_manager) == user_name,
@@ -1700,10 +1758,10 @@ def view_dscore():
             projects_under_manager = ProjectTargets.query.with_entities(ProjectTargets.Project).filter(
                 func.lower(ProjectTargets.ApprovalManager) == user_name.lower()
             ).all()
-
+            print(projects_under_manager)    
             # Extract project names from the query result
             project_names = [proj[0] for proj in projects_under_manager]
-
+        
             # If the user is an Approval Manager for any project, fetch employees from those projects
             if project_names:
                 additional_employees = Employee_information.query.filter(
@@ -1741,6 +1799,7 @@ def view_dscore():
                 
                 
                 project_name = project_name[0] if project_name else None
+                is_actual_approval_manager=project_name in project_names 
                 approval_manager_row = db.session.query(ProjectTargets.ApprovalManager).filter(
                     ProjectTargets.Project == project_name
                 ).first()
@@ -1756,8 +1815,19 @@ def view_dscore():
                     approval_status=approval_record.status
                 else:
                     approval_status=None    
-                
-                
+                selected_month_int = int(selected_month) if selected_month else None
+                selected_year_int = int(selected_year) if selected_year else None
+
+                # Check if the employee has an approved record in DmaxApprovals
+                dmax_approval_record = db.session.query(DmaxApprovals).filter(
+                    DmaxApprovals.employee_email == emp.emp_id,  # Match by email
+                    DmaxApprovals.approved_month == selected_month_int,  # Convert month to integer
+                    DmaxApprovals.approved_year == selected_year_int,   # Convert year to integer
+                    DmaxApprovals.status == "Approved"  # Check if the record is approved
+                ).first()   
+                hide_op_excellence_icon = dmax_approval_record and dmax_approval_record.status.lower() == "approved"
+
+                  
                 # If matched employees exist, calculate averages
                 if matched_employees.count() > 0:
                     averages = get_averages_for_filtered_employees(matched_employees)
@@ -1783,10 +1853,13 @@ def view_dscore():
                                 "project":emp.emp_project,
                                 "project_status": project_status,
                                 "approval_status": approval_status,
-                                "is_approval_manager": is_approval_manager
+                                "is_approval_manager": is_approval_manager,
+                                "flag": emp.emp_project in project_names,
+                                "hide_op_excellence_icon": hide_op_excellence_icon
+                                
                             }
                         )
-
+                
             # filtered_employees = []
             # matched_employees = get_filtered_employees(
             #     Dform.query,
@@ -1846,8 +1919,9 @@ def operational_excellence(emp_id):
         if request.method == 'POST':
             month = int(request.form.get('month'))  # Ensure it's an integer
             year = int(request.form.get('year'))
-            dtouch = int(request.form.get('dtouch'))
-            new_init = int(request.form.get('newInitiatives'))
+            dtouch = float(request.form.get('dtouch'))
+
+            new_init = int(request.form.get('newInitiatives')) if not hide_new_initiatives else 0
             if designation == "Intern":
                 # attendance = int((attendance * 10 / 100) * 100)
                 dtouch = float(((dtouch * 10 / 100 / 100) * 100) )
@@ -1870,6 +1944,24 @@ def operational_excellence(emp_id):
                 dtouch = float(((dtouch * 5 / 100 / 100) * 100) )    
                 new_init = float((new_init * 30 / 100 / 100) * 100)
             start_date, end_date = get_date_range_for_month(month, year)  
+            daily_records = Dform.query.filter(
+                Dform.employee_id == emp_id,
+                Dform.today_date.startswith(f"{year}-{month:02d}")  # Matches YYYY-MM
+            ).all()
+            
+            if daily_records:
+                for record in daily_records:
+                    record.skill = dtouch
+                    record.new_initiatives = new_init
+                    record.Dmax_score = (
+                        record.production +
+                        record.quality +
+                        record.attendance +
+                        record.skill +  # skill is already updated with dtouch
+                        record.new_initiatives  # new_initiatives is already updated with new_init
+                    )
+
+                   
             # op_excellence.attendance_score = attendance
             op_excellence.dtouch_score = dtouch
             op_excellence.new_init_score = new_init    
@@ -2913,51 +3005,133 @@ def delete_employee_data():
     db.session.commit()
     return jsonify({"success": True})
 
+# 
+
+# @app.route('/approve_employee', methods=['POST'])
+# def approve_employee():
+#     data = request.json
+#     email = data.get("email")
+#     month = data.get("month")
+#     year = data.get("year")
+
+#     existing_approval = DmaxApprovals.query.filter_by(
+#         employee_email=email, approved_month=month, approved_year=year
+#     ).first()
+
+#     if existing_approval:
+#         existing_approval.status = "Approved"
+#     else:
+#         new_approval = DmaxApprovals(
+#             employee_email=email,
+#             approved_month=month,
+#             approved_year=year,
+#             status="waiting for approval"
+#         )
+#         db.session.add(new_approval)
+
+#     db.session.commit()
+#     return jsonify({"success": True, "message": "Approval recorded"})
+
 @app.route('/approve_employee', methods=['POST'])
 def approve_employee():
-    
-    data = request.json 
+    data = request.json
     email = data.get("email")
-    month = data.get("month")
     
-    year = data.get("year")
-    op_excellence = OperationalExcellence.query.filter_by(
-        emp_id=email, month=month, year=year
-    ).first()
-    if operational_excellence:
-        print("Operational Excellence record found")
-    first_entry_check = DmaxApprovals.query.filter_by(employee_email=email).count() == 0
-    if not first_entry_check and int(month) > 1:
-        prev_month = int(month) - 1  # Convert month to integer before subtraction
-        prev_year = int(year)
-        previous_approval=DmaxApprovals.query.filter_by(
-            employee_email=email,
-            approved_month=prev_month,
-            approved_year=prev_year
+    month = data.get("month")  # Keep this unchanged
+    year = data.get("year")  # Keep this unchanged
+
+    # Create new formatted variables
+    formatted_month = int(month)
+    formatted_year = int(year)
+
+    # Calculate previous month and year
+    if formatted_month > 1:
+        prev_month = formatted_month - 1
+        prev_year = formatted_year
+    else:
+        prev_month = 12
+        prev_year = formatted_year - 1
+
+    # ✅ Now, Query for the previous score entry
+    if formatted_month > 1:  # Only check if it's NOT January
+        first_entry = Dform.query.filter(
+        Dform.employee_id == email,  # ✅ Changed to employee_id
+        func.strftime('%m', func.date(Dform.today_date)) == str(prev_month).zfill(2),
+        func.strftime('%Y', func.date(Dform.today_date)) == str(prev_year)
         ).first()
-        if previous_approval and previous_approval.status != "Approved":
-            return jsonify({"success": False, "message": f"Approval for {prev_month}-{prev_year} is not completed yet!"}), 400
+        
+        # previous_score_entry = Dform.query.filter(
+        #     Dform.employee_email == email,
+        #     extract("month", Dform.today_date) == prev_month,
+        #     extract("year", Dform.today_date) == prev_year
+        # ).first()
+        if first_entry:
+            print(f"First Entry: {first_entry}")
+            prev_approval = DmaxApprovals.query.filter_by(
+                employee_email=email,  
+                approved_month=prev_month,
+                approved_year=prev_year,
+                status="Approved"  # Only look for Approved status
+            ).first()
+            prev_month_str = str(prev_month).zfill(2)  
+            prev_month_name = monthsDict.get(prev_month_str, "Unknown")
+            if not prev_approval:
+                print("⚠ Error: Previous month scores should be approved first!")
+                return jsonify({
+                    "success": False,
+                    "message": f"{prev_month_name}-{prev_year} scores should be approved first!"
+                }), 400
+            
+
+            
+            # try:
+                
+            # except ValueError:
+            #     print("⚠ Error: today_date format is incorrect in DB.")
+        
+
+            # if not previous_approval or previous_approval.status != "Approved":
+            #     return jsonify({
+            #         "success": False,
+            #         "message": f"Approval for {prev_month}-{prev_year} must be completed first!"
+            #     }), 400
+
+    # ✅ Approval logic remains unchanged
     existing_approval = DmaxApprovals.query.filter_by(
-        employee_email=email,
-        approved_month=month,
-        approved_year=year
+        employee_email=email, approved_month=month, approved_year=year
     ).first()
 
     if existing_approval:
-       existing_approval.status = "Approved"
+        existing_approval.status = "Approved"
+    else:
+        new_approval = DmaxApprovals(
+            employee_email=email,
+            approved_month=month,
+            approved_year=year,
+            status="waiting for approval"
+        )
+        db.session.add(new_approval)
 
-    # Add new approval entry
-    new_approval = DmaxApprovals(
-        employee_email=email,
-        approved_month=month,
-        approved_year=year,
-        status="waiting for approval"
-    )
-    db.session.add(new_approval)
     db.session.commit()
-
     return jsonify({"success": True, "message": "Approval recorded"})
 
+@app.route('/check_operational_excellence', methods=['POST'])
+def check_operational_excellence():
+    data = request.json
+    email = data.get("email")
+    month = data.get("month")
+    year = data.get("year")
+
+    op_excellence = OperationalExcellence.query.filter_by(emp_id=email, month=month, year=year).first()
+
+    # If missing OR both values are 0, ask for confirmation
+    if not op_excellence or (op_excellence.dtouch_score == 0 and op_excellence.new_init_score == 0):
+        return jsonify({
+            "confirm_needed": True,
+            "message": "Operational Excellence scores are missing or 0. Do you want to proceed?"
+        })
+
+    return jsonify({"confirm_needed": False}) 
 
 with app.app_context():
         

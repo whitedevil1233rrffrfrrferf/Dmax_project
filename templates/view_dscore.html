@@ -33,7 +33,7 @@
             </nav>
           </div>
         <div class="filter_div container" style="margin-top: 2rem;">
-            <div class="inner_filter_div">
+            <div class="inner_filter_div" style="display: none;">
                 <label for="date">Date:</label>
                 <input type="date" id="date" name="date" onchange="handleFilters()" value="{{ selected_date }}">
             </div>
@@ -82,6 +82,10 @@
                           <th scope="col" class="table_header">Skill</th>
                           <th scope="col" class="table_header">New initiatives</th>
                           <th scope="col" class="table_header">Dmax score</th>
+                         
+                          {% if role == "admin" %}
+                            <th scope="col" class="table_header">Operational excellence</th>
+                          {% endif %}  
                           <th scope="col" class="table_header">Dmax status</th>
                           <th scope="col" class="table_header">View</th>
                         </thead>
@@ -98,6 +102,17 @@
                               <td>{{emp.new_initiatives}}</td>
                               <td>{{emp.Dmax_score}}</td>
                               
+                              {% if role == "admin" %}
+                                <td>
+                                  {% if emp.flag %}
+                                      {% if not emp.hide_op_excellence_icon %}
+                                        <a href="{{ url_for('operational_excellence', emp_id=emp.employee_id) }}">
+                                          <i class="fa-solid fa-clipboard-user" style="color: black !important;"></i>
+                                        </a>
+                                      {% endif %}
+                                  {% endif %}
+                                </td>
+                              {% endif %}
                               <td>
                                 {% if emp.is_approval_manager %}  <!-- If the user is the Approval Manager (Admin) -->
                                     {% if emp.approval_status == "waiting for approval" %}
@@ -221,6 +236,13 @@
       </script>
       <script>
         const approveUrl = "{{ url_for('approve_employee') }}";
+      </script>
+      <script>
+        const checkOperationalExcellenceUrl="{{ url_for('check_operational_excellence') }}"
+      </script>
+      <script>
+        const role = "{{ role }}";
+        
       </script>
       <script>
         function clearSearch() {
