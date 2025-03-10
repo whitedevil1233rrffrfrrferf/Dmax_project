@@ -79,8 +79,10 @@
                             <th scope="col" class="table_header">Targets</th>
                             {% if actual_role != 'crewmate' %}
                                 <th scope="col" class="table_header">Edit</th>
-                            {% endif %}    
+                            {% endif %}  
+                            {% if actual_role != 'crewmate' %}  
                             <th scope="col" class="table_header">Delete</th>
+                            {% endif %}
                             
                         </tr>
                     </thead>
@@ -125,11 +127,13 @@
                                     {% if actual_role != 'crewmate' %}
                                         <td><a href="{{ url_for('edit_employee', employee_id=emp.id) }}"><i class="fas fa-edit" style="color: blue !important;"></i></a></td>
                                     {% endif %}
-                                    <td>
-                                        <button class="btn btn-danger btn-sm delete-btn" data-id="{{ emp.id }}" data-url="{{ url_for('delete_employee', id=emp.id) }}" style="color: red !important;">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </button>
-                                    </td>
+                                    {% if actual_role != 'crewmate' %}
+                                        <td>
+                                            <button class="btn btn-danger btn-sm delete-btn" data-id="{{ emp.id }}" data-url="{{ url_for('delete_employee', id=emp.id) }}" style="color: red !important;">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </td>
+                                    {% endif %}    
                                 </tr>
                             {% endfor %}
                         {% else %}

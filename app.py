@@ -1890,6 +1890,8 @@ def delete_employee(id):
 
 @app.route('/operational_excellence/<string:emp_id>', methods=['GET', 'POST'])
 def operational_excellence(emp_id):
+    user_name = get_logged_in_user_details()
+    role = user_name['role']
     employee_info = Employee_information.query.filter_by(emp_id=emp_id).first()
     emp_designation = corrections.get(employee_info.emp_designation, employee_info.emp_designation)
     
@@ -1972,7 +1974,7 @@ def operational_excellence(emp_id):
             db.session.commit()    
 
             
-    return render_template('operational_excellence.html',emp_id=emp_id,months_dict=monthsDict,years=last_ten_years,desc_op_excellence=desc_op_excellence,selected_month=selected_month,selected_year=selected_year,dtouch_score=dtouch_score,new_init_score=new_init_score,hide_new_initiatives=hide_new_initiatives)
+    return render_template('operational_excellence.html',emp_id=emp_id,months_dict=monthsDict,years=last_ten_years,desc_op_excellence=desc_op_excellence,selected_month=selected_month,selected_year=selected_year,dtouch_score=dtouch_score,new_init_score=new_init_score,hide_new_initiatives=hide_new_initiatives,role=role,emp_designation=emp_designation)
 
 
 @app.route("/full_table_view/<string:id>", methods=['GET'])
@@ -3121,15 +3123,17 @@ def check_operational_excellence():
     email = data.get("email")
     month = data.get("month")
     year = data.get("year")
-
+    user_name = get_logged_in_user_details()
+    role = user_name['role']
     op_excellence = OperationalExcellence.query.filter_by(emp_id=email, month=month, year=year).first()
 
     # If missing OR both values are 0, ask for confirmation
-    if not op_excellence or (op_excellence.dtouch_score == 0 and op_excellence.new_init_score == 0):
-        return jsonify({
-            "confirm_needed": True,
-            "message": "Operational Excellence scores are missing or 0. Do you want to proceed?"
-        })
+    if role == "admin" and (not op_excellence or (op_excellence.dtouch_score == 0 and op_excellence.new_init_score == 0)):
+        if not op_excellence or (op_excellence.dtouch_score == 0 and op_excellence.new_init_score == 0):
+            return jsonify({
+                "confirm_needed": True,
+                "message": "Operational Excellence scores are missing or 0. Do you want to proceed?"
+            })
 
     return jsonify({"confirm_needed": False}) 
 

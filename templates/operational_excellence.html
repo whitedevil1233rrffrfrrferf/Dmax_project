@@ -40,19 +40,23 @@
                     {% endfor %}
                 </select>
                 <div class="mb-3">
-                    <label for="dtouch" class="form-label">DTOUCH/Soft Skill</label>
-                    <input type="number" class="form-control" id="dtouch" name="dtouch" value="{{ dtouch_score }}" required step="any">
+                    <label for="dtouch" class="form-label">
+                        DTOUCH/Soft Skill <span id="dtouch-description" class="text-muted" style="font-size: 0.9rem;"></span>
+                    </label>
+                    <input type="number" class="form-control" id="dtouch" name="dtouch" value="{{ dtouch_score }}" required step="any" placeholder="Enter value">
                 </div>
                 
                 {% if not hide_new_initiatives %}
                     <div class="mb-3" >
-                        <label for="newInitiatives" class="form-label">New Initiatives</label>
+                        <label for="newInitiatives" class="form-label">
+                            New Initiatives <span id="newInitiatives-description" class="text-muted" style="font-size: 0.9rem;"></span>
+                        </label>
                         <input type="text" class="form-control" id="newInitiatives" name="newInitiatives" required  value="{{ new_init_score }}">
                     </div>
                 {% endif %}    
                 <div style="display: flex; justify-content: space-around; margin-top:2rem;">
                     <button type="submit" class="btn btn-primary" style="width:6rem; height:3rem;"">Submit</button>
-                    <a class="btn btn-outline-secondary" href="{{url_for('team_dmax_table')}}" style=" width:6rem; height:3rem;">
+                    <a class="btn btn-outline-secondary" href="{{url_for('view_dscore')}}" style=" width:6rem; height:3rem;">
                         <div style="display: flex; justify-content: space-between; padding:5px;">
                             <div>
                                 <i class="fa-solid fa-backward" style="margin-right: 10px; "></i>
@@ -79,10 +83,58 @@
     </div>  -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script> 
     <script>
+        document.addEventListener("DOMContentLoaded", function () {
+        const designation = "{{ emp_designation }}";  // Get designation from Jinja
+        const dtouchInput = document.getElementById("dtouch");
+        const dtouchDescription = document.getElementById("dtouch-description");    
+        function updatePlaceholder() {
+            let percentage = 5; // Default 5%
+            
+            if (["Intern", "Jr.QA Engineer"].includes(designation)) {
+                percentage = 10; // 10% for Intern & JrQAEngineer
+            }
+            dtouchDescription.textContent = `(Calculates ${percentage}% of the entered value)`;
+    
+            
+        }
+
+        updatePlaceholder();
+
+        
+        }); 
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const designation = "{{ emp_designation }}";  // Get designation from Jinja
+            const newInitiativesInput = document.getElementById("newInitiatives");
+            const newInitiativesDescription = document.getElementById("newInitiatives-description");
+    
+            function updateNewInitiativesDescription() {
+                let percentage = 0; // Default 0% for Intern & JrQAEngineer
+    
+                if (designation === "QA Engineer") {
+                    percentage = 15;
+                } else if (designation === "Sr.QA Engineer") {
+                    percentage = 20;
+                } else if (designation === "QA Lead") {
+                    percentage = 30;
+                }
+    
+                newInitiativesDescription.textContent = `(Calculates ${percentage}% of the entered value)`;
+    
+                // If the value is 0 or empty, clear it to show placeholder
+                
+            }
+    
+            updateNewInitiativesDescription();
+        });
+    </script>
+    <script>
         document.querySelector("form").addEventListener("submit", function(event) {
             let dtouch = document.getElementById("dtouch").value;
             let newInitiatives = document.getElementById("newInitiatives");
-        
+            let newInitiativesValue = document.getElementById("newInitiatives").value;
+            
             function isInteger(value) {
                 return /^\d+$/.test(value);  // ✅ Only allows whole numbers (1, 2, 3) & rejects decimals (1.1, 2.5)
             }
@@ -91,11 +143,20 @@
                 alert("Please enter a valid integer for DTOUCH/Soft Skill.");
                 event.preventDefault();  // ⛔ Stops form submission
             }
+            else if (parseInt(dtouch) < 10) {
+                alert("DTOUCH/Soft Skill must be greater than or equal to 10.");
+                event.preventDefault();
+            }
         
             if (newInitiatives && !isInteger(newInitiatives.value)) {
                 alert("Please enter a valid integer for New Initiatives.");
                 event.preventDefault();
             }
+            else if (newInitiativesValue < 10) { // ✅ FIXED: newInitiatives.value inside parseInt()
+                alert("New Initiatives must be greater than 10.");
+                event.preventDefault();
+            }
+            
         });
     </script>
     
