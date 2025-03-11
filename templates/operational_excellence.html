@@ -133,7 +133,7 @@
         document.querySelector("form").addEventListener("submit", function(event) {
             let dtouch = document.getElementById("dtouch").value;
             let newInitiatives = document.getElementById("newInitiatives");
-            let newInitiativesValue = document.getElementById("newInitiatives").value;
+            let newInitiativesValue = newInitiatives ? newInitiatives.value : null;
             
             function isInteger(value) {
                 return /^\d+$/.test(value);  // ✅ Only allows whole numbers (1, 2, 3) & rejects decimals (1.1, 2.5)
@@ -148,13 +148,17 @@
                 event.preventDefault();
             }
         
-            if (newInitiatives && !isInteger(newInitiatives.value)) {
-                alert("Please enter a valid integer for New Initiatives.");
-                event.preventDefault();
-            }
-            else if (newInitiativesValue < 10) { // ✅ FIXED: newInitiatives.value inside parseInt()
-                alert("New Initiatives must be greater than 10.");
-                event.preventDefault();
+            if (newInitiatives && newInitiatives.offsetParent !== null) { // ✅ Check if visible
+                if (!isInteger(newInitiativesValue)) {
+                    alert("Please enter a valid integer for New Initiatives.");
+                    event.preventDefault();
+                    return;
+                } 
+                if (parseInt(newInitiativesValue) <= 10) {  // ✅ FIXED: Converted to number
+                    alert("New Initiatives must be greater than 10.");
+                    event.preventDefault();
+                    return;
+                }
             }
             
         });

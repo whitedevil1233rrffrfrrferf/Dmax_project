@@ -173,7 +173,7 @@ document.getElementById("myForm").addEventListener("keydown", function(event) {
     }
 });
 
-document.getElementById("myForm").addEventListener("submit",function(){
+document.getElementById("myForm").addEventListener("submit",function(event){
             const attendance = document.getElementById("att").value;
 
             if (attendance == 0) {
@@ -181,24 +181,32 @@ document.getElementById("myForm").addEventListener("submit",function(){
                 let confirmAttendance = confirm("Attendance is 0. All the values will be set to 0. Are you sure you want to submit?");
                 if (!confirmAttendance) {
                     alert("Submission canceled due to attendance being 0.");
+                    event.preventDefault();
                     return; // Stop further execution if user cancels
                 }
             }
             
             // Show confirmation popup
             let confirmation = confirm("Are you sure you want to submit the form?");
+            if (!confirmation) {  
+                alert("Submission canceled.");  
+                event.preventDefault(); // Stop form submission  
+                return;  
+            }
             if (document.querySelector(".flash-error")) {
                 event.preventDefault(); // Stop form submission
                 return;
             }    
-            if (confirmation) {
-                // If user clicks "OK", submit the form
+            // if (confirmation) {
+            //     // If user clicks "OK", submit the form
                 
-                this.submit(); // Programmatically submit the form
-            } else {
-                // If user clicks "Cancel", do nothing and keep form values
-                alert("Submission canceled.");
-            }    
+            //     this.submit(); // Programmatically submit the form
+            // } else {
+            //     // If user clicks "Cancel", do nothing and keep form values
+            //     alert("Submission canceled.");
+            //     event.preventDefault();
+            // }    
+            this.submit();
 })
 
      

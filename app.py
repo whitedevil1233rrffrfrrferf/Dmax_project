@@ -2259,7 +2259,7 @@ def full_table_view(id):
                 "Requirement analyzing/writing testcondition",
                 "End-End test cases executed"
             ],
-            "Web Development":[
+            "Website Development":[
                 "New Features Implemented",
                 "Defects Fixed",
                 "Enhancements Target",
@@ -2762,12 +2762,48 @@ def form_bulk_upload():
             if not any(row):  # Skip empty rows
                 continue
             row_data = {}
-            
+            empty_columns = []
+            for field, cell_value in zip(field_to_column.keys(), row):  
+                if cell_value is None or cell_value == "":  
+                    empty_columns.append(field.replace('_', ' ').capitalize())  
+                row_data[field] = cell_value  
+            if empty_columns:  # Skip this row if any column is empty  
+                flash(f"Skipping row: {', '.join(empty_columns)} are empty!", "danger")  
+                continue  # Skip to the next row     
             # Map the columns to the appropriate fields and get the .value for each formula
             for field, col_index in field_to_column.items():
                 cell_value = row[col_index]  # Directly get the value
-                if field == "today_date" and isinstance(cell_value, datetime):
-                    row_data[field] = cell_value.date().strftime("%Y-%m-%d")    
+                # if field == "today_date" and isinstance(cell_value, datetime):
+                #     print("date")
+                #     row_data[field] = cell_value.date().strftime("%Y-%m-%d")
+                if field == "today_date":
+                    if isinstance(cell_value, datetime):
+                        print("Detected datetime:", cell_value)  # Shows full datetime
+                        row_data[field] = cell_value.date().strftime('%Y-%m-%d')  
+                        existing_entry = Dform.query.filter_by(
+                            employee_email=row_data["employee_email"], 
+                            today_date=row_data["today_date"]
+                        ).first()
+
+
+                    elif isinstance(cell_value, (int, float)):  # Handling Excel serial date format
+                        print("int or float")
+                        try:
+                            row_data[field] = (datetime(1899, 12, 30) + timedelta(days=int(cell_value))).strftime('%Y-%m-%d')
+                        except Exception as e:
+                            print("Error converting Excel date:", e)
+                            row_data[field] = ""
+
+                    elif isinstance(cell_value, str):  # Handling string date formats
+                        print("date_string")
+                        try:
+                            row_data[field] = datetime.strptime(cell_value, '%Y-%m-%d').strftime('%Y-%m-%d')
+                        except ValueError:
+                            print("Incorrect date format, setting to empty string")
+                            row_data[field] = ""     
+                if "today_date" in row_data:
+                    row_data["today_date"] = row_data["today_date"].strftime('%Y-%m-%d') if isinstance(row_data["today_date"], datetime) else str(row_data["today_date"]) 
+                    print("rows",row_data["today_date"])        
                 if field in ["production", "quality", "attendance", "skill", "new_initiatives", "Dmax_score"]:
                     if isinstance(cell_value, (int, float)):  # Ensure it's numeric before multiplying
                         row_data[field] = round(cell_value * 100, 2)  # Convert to percentage
@@ -2775,10 +2811,22 @@ def form_bulk_upload():
                         row_data[field] = cell_value  # Keep as is if not numeric
                 else:
                     row_data[field] = cell_value
-            
-            # Check if any field in the row is None, and skip the row if it contains null values
-            new_entry = Dform(**row_data)
-            db.session.add(new_entry)
+            try:        
+                if existing_entry:
+                    print("existing")
+                    flash(f"Entry for {row_data['employee_email']} on {row_data['today_date']} already exists!", "danger")
+            except Exception as e:
+                    flash(f"Enter a valid Email ID", "danger")
+                    continue    
+            else:
+                try:
+
+                # Check if any field in the row is None, and skip the row if it contains null values
+                    new_entry = Dform(**row_data)
+                    db.session.add(new_entry)
+                except Exception as e:
+                    db.session.rollback()
+                    flash(f"Database error: {str(e)}", "danger")    
         db.session.commit()
               
     return render_template("form_bulk_upload.html")
