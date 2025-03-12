@@ -608,6 +608,15 @@ def home():
         
         results = {}
         employee_id = form_data['employee_id']
+        employee_email = form_data['employee_email']
+        existing_employee = Employee_information.query.filter_by(
+            emp_id=employee_id,
+            emp_email=employee_email
+        ).first()
+        if not existing_employee:
+            flash("Employee does not exist.", "error")
+            return redirect(request.url)
+            
         form_today_date = datetime.strptime(form_data['today_date'], '%Y-%m-%d')
         existing_entry = Dform.query.filter_by(today_date=form_data['today_date'], employee_email=form_data['employee_email']).first()
         if existing_entry:
@@ -1349,7 +1358,7 @@ def dmax_table():
     ).all()
 
     project_names = [proj[0] for proj in projects_under_manager]
-
+    
     # Modify the query to include only employees working on these projects
     
 
@@ -1417,7 +1426,7 @@ def dmax_table():
     ]
 
 
-    return render_template('dmax_table.html', data_list=data_list,pagination=paginated_avg_scores,avg_scores_list=avg_scores_list, search_term=search_term,page_size=page_size,page_size_options=page_size_options,chart_data=chart_data,selected_month=selected_month,selected_designation=selected_designation,selected_project=selected_project,projects=projects,designations=designations,labels=labels, scores=scores)
+    return render_template('dmax_table.html', data_list=data_list,pagination=paginated_avg_scores,avg_scores_list=avg_scores_list, search_term=search_term,page_size=page_size,page_size_options=page_size_options,chart_data=chart_data,selected_month=selected_month,selected_designation=selected_designation,selected_project=selected_project,projects=projects,designations=designations,labels=labels, scores=scores,project_names=project_names)
 
 @app.route("/team_dmax_table", methods=["GET", "POST"])
 def team_dmax_table():
@@ -2767,6 +2776,20 @@ def form_bulk_upload():
                 if cell_value is None or cell_value == "":  
                     empty_columns.append(field.replace('_', ' ').capitalize())  
                 row_data[field] = cell_value  
+            employee_id = row_data.get("employee_id")
+            employee_email = row_data.get("employee_email")    
+            existing_employee = Employee_information.query.filter_by(
+                emp_id=employee_id,
+                emp_email=employee_email
+            ).first()    
+            existing_employee = Employee_information.query.filter_by(
+                emp_id=employee_id,
+                emp_email=employee_email
+            ).first()
+
+            if not existing_employee:
+                flash(f"Employee with ID {employee_id} and Email {employee_email} does not exist.", "danger")
+                continue
             if empty_columns:  # Skip this row if any column is empty  
                 flash(f"Skipping row: {', '.join(empty_columns)} are empty!", "danger")  
                 continue  # Skip to the next row     
@@ -2780,19 +2803,21 @@ def form_bulk_upload():
                     if isinstance(cell_value, datetime):
                         print("Detected datetime:", cell_value)  # Shows full datetime
                         row_data[field] = cell_value.date().strftime('%Y-%m-%d')  
-                        existing_entry = Dform.query.filter_by(
-                            employee_email=row_data["employee_email"], 
-                            today_date=row_data["today_date"]
-                        ).first()
+                        
 
+                    elif isinstance(cell_value, (int, float)):  # Handling Excel serial dates
+                        print(f"Checking value {cell_value} for date conversion...")
 
-                    elif isinstance(cell_value, (int, float)):  # Handling Excel serial date format
-                        print("int or float")
-                        try:
-                            row_data[field] = (datetime(1899, 12, 30) + timedelta(days=int(cell_value))).strftime('%Y-%m-%d')
-                        except Exception as e:
-                            print("Error converting Excel date:", e)
-                            row_data[field] = ""
+                        # Excel serial dates are usually greater than 59 (before that, Excel has a known leap year bug)
+                        if 60 <= cell_value <= 50000:  # Assuming valid Excel dates fall in this range
+                            try:
+                                converted_date = datetime(1899, 12, 30) + timedelta(days=int(cell_value))
+                                row_data[field] = converted_date.strftime('%Y-%m-%d')
+                            except Exception as e:
+                                print("Error converting Excel date:", e)
+                                row_data[field] = ""
+                        else:
+                            row_data[field] = str(cell_value)
 
                     elif isinstance(cell_value, str):  # Handling string date formats
                         print("date_string")
@@ -2802,7 +2827,17 @@ def form_bulk_upload():
                             print("Incorrect date format, setting to empty string")
                             row_data[field] = ""     
                 if "today_date" in row_data:
-                    row_data["today_date"] = row_data["today_date"].strftime('%Y-%m-%d') if isinstance(row_data["today_date"], datetime) else str(row_data["today_date"]) 
+                    if isinstance(row_data["today_date"], (int, float)):  
+                        row_data["today_date"] = (datetime(1899, 12, 30) + timedelta(days=int(row_data["today_date"]))).strftime('%Y-%m-%d')
+                    elif isinstance(row_data["today_date"], datetime):  
+                        row_data["today_date"] = row_data["today_date"].strftime('%Y-%m-%d')
+                    # Ensure it's stored as a string (prevent integer override)
+                    row_data["today_date"] = str(row_data["today_date"])
+                    existing_entry = Dform.query.filter_by(
+                            employee_email=row_data["employee_email"], 
+                            today_date=row_data["today_date"]
+                        ).first()
+
                     print("rows",row_data["today_date"])        
                 if field in ["production", "quality", "attendance", "skill", "new_initiatives", "Dmax_score"]:
                     if isinstance(cell_value, (int, float)):  # Ensure it's numeric before multiplying
@@ -2813,8 +2848,9 @@ def form_bulk_upload():
                     row_data[field] = cell_value
             try:        
                 if existing_entry:
-                    print("existing")
+                    
                     flash(f"Entry for {row_data['employee_email']} on {row_data['today_date']} already exists!", "danger")
+                    continue
             except Exception as e:
                     flash(f"Enter a valid Email ID", "danger")
                     continue    
@@ -3082,6 +3118,89 @@ def delete_employee_data():
 #     db.session.commit()
 #     return jsonify({"success": True, "message": "Approval recorded"})
 
+# @app.route('/approve_employee', methods=['POST'])
+# def approve_employee():
+#     data = request.json
+#     email = data.get("email")
+    
+#     month = data.get("month")  # Keep this unchanged
+#     year = data.get("year")  # Keep this unchanged
+
+#     # Create new formatted variables
+#     formatted_month = int(month)
+#     formatted_year = int(year)
+
+#     # Calculate previous month and year
+#     if formatted_month > 1:
+#         prev_month = formatted_month - 1
+#         prev_year = formatted_year
+#     else:
+#         prev_month = 12
+#         prev_year = formatted_year - 1
+
+#     # ✅ Now, Query for the previous score entry
+#     if formatted_month > 1:  # Only check if it's NOT January
+#         first_entry = Dform.query.filter(
+#         Dform.employee_id == email,  # ✅ Changed to employee_id
+#         func.strftime('%m', func.date(Dform.today_date)) == str(prev_month).zfill(2),
+#         func.strftime('%Y', func.date(Dform.today_date)) == str(prev_year)
+#         ).first()
+        
+#         # previous_score_entry = Dform.query.filter(
+#         #     Dform.employee_email == email,
+#         #     extract("month", Dform.today_date) == prev_month,
+#         #     extract("year", Dform.today_date) == prev_year
+#         # ).first()
+#         if first_entry:
+#             print(f"First Entry: {first_entry}")
+#             prev_approval = DmaxApprovals.query.filter_by(
+#                 employee_email=email,  
+#                 approved_month=prev_month,
+#                 approved_year=prev_year,
+#                 status="Approved"  # Only look for Approved status
+#             ).first()
+#             prev_month_str = str(prev_month).zfill(2)  
+#             prev_month_name = monthsDict.get(prev_month_str, "Unknown")
+#             if not prev_approval:
+#                 print("⚠ Error: Previous month scores should be approved first!")
+#                 return jsonify({
+#                     "success": False,
+#                     "message": f"{prev_month_name}-{prev_year} scores should be approved first!"
+#                 }), 400
+            
+
+            
+#             # try:
+                
+#             # except ValueError:
+#             #     print("⚠ Error: today_date format is incorrect in DB.")
+        
+
+#             # if not previous_approval or previous_approval.status != "Approved":
+#             #     return jsonify({
+#             #         "success": False,
+#             #         "message": f"Approval for {prev_month}-{prev_year} must be completed first!"
+#             #     }), 400
+
+#     # ✅ Approval logic remains unchanged
+#     existing_approval = DmaxApprovals.query.filter_by(
+#         employee_email=email, approved_month=month, approved_year=year
+#     ).first()
+
+#     if existing_approval:
+#         existing_approval.status = "Approved"
+#     else:
+#         new_approval = DmaxApprovals(
+#             employee_email=email,
+#             approved_month=month,
+#             approved_year=year,
+#             status="waiting for approval"
+#         )
+#         db.session.add(new_approval)
+
+#     db.session.commit()
+#     return jsonify({"success": True, "message": "Approval recorded"})
+
 @app.route('/approve_employee', methods=['POST'])
 def approve_employee():
     data = request.json
@@ -3104,48 +3223,31 @@ def approve_employee():
 
     # ✅ Now, Query for the previous score entry
     if formatted_month > 1:  # Only check if it's NOT January
-        first_entry = Dform.query.filter(
-        Dform.employee_id == email,  # ✅ Changed to employee_id
-        func.strftime('%m', func.date(Dform.today_date)) == str(prev_month).zfill(2),
-        func.strftime('%Y', func.date(Dform.today_date)) == str(prev_year)
-        ).first()
-        
-        # previous_score_entry = Dform.query.filter(
-        #     Dform.employee_email == email,
-        #     extract("month", Dform.today_date) == prev_month,
-        #     extract("year", Dform.today_date) == prev_year
-        # ).first()
-        if first_entry:
-            print(f"First Entry: {first_entry}")
-            prev_approval = DmaxApprovals.query.filter_by(
-                employee_email=email,  
-                approved_month=prev_month,
-                approved_year=prev_year,
-                status="Approved"  # Only look for Approved status
-            ).first()
-            prev_month_str = str(prev_month).zfill(2)  
-            prev_month_name = monthsDict.get(prev_month_str, "Unknown")
-            if not prev_approval:
-                print("⚠ Error: Previous month scores should be approved first!")
+        last_approval = (
+            DmaxApprovals.query.filter(
+                DmaxApprovals.employee_email == email
+            )
+            .order_by(DmaxApprovals.approved_year.desc(), DmaxApprovals.approved_month.desc())
+            .first()
+        )
+
+        print("Last Approval:", last_approval)
+
+        if last_approval:
+            last_approved_month_str = str(last_approval.approved_month).zfill(2)
+            last_approved_month_name = monthsDict.get(last_approved_month_str, "Unknown")
+            # If last approval exists but is NOT "Approved", return an error
+            if last_approval.status != "Approved":
                 return jsonify({
                     "success": False,
-                    "message": f"{prev_month_name}-{prev_year} scores should be approved first!"
+                    "message": f"Previous approval {last_approved_month_name}-{last_approval.approved_year} is still pending!"
                 }), 400
-            
-
-            
-            # try:
-                
-            # except ValueError:
-            #     print("⚠ Error: today_date format is incorrect in DB.")
-        
-
-            # if not previous_approval or previous_approval.status != "Approved":
-            #     return jsonify({
-            #         "success": False,
-            #         "message": f"Approval for {prev_month}-{prev_year} must be completed first!"
-            #     }), 400
-
+            if not (last_approval.approved_month == prev_month and last_approval.approved_year == prev_year):
+                prev_month_name = monthsDict.get(str(prev_month).zfill(2), "Unknown")
+                return jsonify({
+                    "success": False,
+                    "message": f"{prev_month_name}-{prev_year} should be approved first!"
+                }), 400
     # ✅ Approval logic remains unchanged
     existing_approval = DmaxApprovals.query.filter_by(
         employee_email=email, approved_month=month, approved_year=year

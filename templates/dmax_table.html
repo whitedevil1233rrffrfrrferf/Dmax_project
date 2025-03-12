@@ -47,7 +47,7 @@
                         <label for="project">Project: </label>
                         <select id="project" onchange="handleFilters()">
                             <option value="" selected >Select</option>
-                            {% for project in projects %}
+                            {% for project in project_names %}
                                 <option value="{{ project }}" {% if project == selected_project %}selected{% endif %}>{{ project }}</option>
                             {% endfor %}
                         </select>
