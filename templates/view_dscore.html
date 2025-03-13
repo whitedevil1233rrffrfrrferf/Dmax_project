@@ -17,21 +17,23 @@
       </div>
       <div style="flex: 1 !important;">
         <h1 class="heading" style="width:90%; margin-left:5%;">View Dmax</h1>
-        <div class="container-fluid" style="width: 90%;">
-            <nav class="navbar navbar-expand-lg bg-body-tertiary">
-              <div class="container">
-                
-                <div class="collapse navbar-collapse" id="navbarSupportedContent" >
+        {% if not role == "crewmate" %}
+          <div class="container-fluid" style="width: 90%;">
+              <nav class="navbar navbar-expand-lg bg-body-tertiary">
+                <div class="container">
                   
-                  <form class="d-flex col-8 my-2" action="{{ url_for('view_dscore') }}" role="search" method="GET" style="margin-left: 20%;">
-                    <input class="form-control me-2" type="search" id="search_bar" placeholder="Search by Name" name="search" aria-label="Search" value="{{ search_query }}" style="margin-right:2rem!important;">
-                    <button class="btn btn-primary" type="submit" >Search</button>
-                    <button type="button" class="btn btn-danger" onclick="clearSearch()" style="margin-left: 2rem;">Clear</button>
-                  </form>
+                  <div class="collapse navbar-collapse" id="navbarSupportedContent" >
+                    
+                    <form class="d-flex col-8 my-2" action="{{ url_for('view_dscore') }}" role="search" method="GET" style="margin-left: 20%;">
+                      <input class="form-control me-2" type="search" id="search_bar" placeholder="Search by Name" name="search" aria-label="Search" value="{{ search_query }}" style="margin-right:2rem!important;">
+                      <button class="btn btn-primary" type="submit" >Search</button>
+                      <button type="button" class="btn btn-danger" onclick="clearSearch()" style="margin-left: 2rem;">Clear</button>
+                    </form>
+                  </div>
                 </div>
-              </div>
-            </nav>
-          </div>
+              </nav>
+            </div>
+        {% endif %}    
         <div class="filter_div container" style="margin-top: 2rem;">
             <div class="inner_filter_div" style="display: none;">
                 <label for="date">Date:</label>

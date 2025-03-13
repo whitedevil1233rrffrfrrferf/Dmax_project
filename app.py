@@ -1,7 +1,8 @@
 from io import BytesIO
 from flask import Flask,render_template,request,redirect, send_file,url_for,jsonify,flash,session
-
+from flask_login import UserMixin,LoginManager, login_user, logout_user, login_required, current_user
 from dotenv import load_dotenv
+from functools import wraps
 import os
 from openpyxl import load_workbook
 from flask_sqlalchemy import SQLAlchemy
@@ -217,6 +218,22 @@ def has_previous_month_entry(employee_id, month):
         Dform.employee_id == employee_id,
         extract('month', Dform.today_date) == previous_month  # Extract month from today_date
     ).first() is not None
+
+def role_required(*roles):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not current_user.is_authenticated:
+                return redirect(url_for('sign'))
+
+            if current_user.role not in roles:
+                flash("Please sign in to access the page.", "danger")
+                return redirect(url_for('sign'))  # Redirect unauthorized users
+
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
 ###############################################  Month dictionary ###############################################
 
 monthsDict = {
@@ -340,7 +357,7 @@ class Dform(db.Model):
     
 
 # Employee Model
-class Employee(db.Model):
+class Employee(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     emp_id = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
@@ -348,6 +365,9 @@ class Employee(db.Model):
     email= db.Column(db.String(100), nullable=False)
     name= db.Column(db.String(100), nullable=False)
     is_approved = db.Column(db.Boolean, default=False, nullable=False)
+
+    def get_id(self):
+        return str(self.id)
 
 class Employee_information(db.Model):
     __bind_key__="emp_info"
@@ -462,6 +482,14 @@ class DmaxApprovals(db.Model):
     approved_year = db.Column(db.Integer, nullable=False)   # Year (2024, etc.)
     status= db.Column(db.String(100), nullable=False)
 
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "sign"  
+
+@login_manager.user_loader
+def load_user(user_id):
+    return Employee.query.get(int(user_id))    
+
 ###############################################  app context processors ###############################################
 
 @app.context_processor
@@ -497,6 +525,8 @@ def get_attr(obj, attr):
 ###############################################  app routes ###############################################
 
 @app.route('/form',methods=["GET","POST"])
+@login_required
+@role_required("manager")
 def home():
     if 'username' in session :
         username = session['username']
@@ -848,7 +878,8 @@ def sign():
 
         if employee and employee.password == password:
             session.clear()
-            
+            login_user(employee)
+
             session['username'] = username
             role=employee.role
             if role=="super_admin":
@@ -1012,6 +1043,7 @@ def search_employee():
     return jsonify({"employees": employees_list})
 
 @app.route('/register', methods=['GET','POST'])
+@login_required
 def register():
     if request.method=="POST":
         username=request.form["username"]
@@ -1048,6 +1080,7 @@ def no_access():
 
 @app.route("/logout")
 def logout():
+    logout_user()
     session.pop('username',None)
     return redirect(url_for('sign'))
 
@@ -1311,6 +1344,8 @@ def employee_upload():
 
 
 @app.route("/dmax_table", methods=["GET", "POST"])
+@login_required
+@role_required("admin", "super_admin")
 def dmax_table():
     default_page_size = 10
     page_size_options = [10, 20, 30, 'All']
@@ -1429,6 +1464,7 @@ def dmax_table():
     return render_template('dmax_table.html', data_list=data_list,pagination=paginated_avg_scores,avg_scores_list=avg_scores_list, search_term=search_term,page_size=page_size,page_size_options=page_size_options,chart_data=chart_data,selected_month=selected_month,selected_designation=selected_designation,selected_project=selected_project,projects=projects,designations=designations,labels=labels, scores=scores,project_names=project_names)
 
 @app.route("/team_dmax_table", methods=["GET", "POST"])
+@login_required
 def team_dmax_table():
     user_details = get_logged_in_user_details()
     if user_details:
@@ -1559,6 +1595,7 @@ def team_dmax_table():
     return "No user found or not logged in."  
 
 @app.route("/view_dscore", methods=["GET", "POST"])
+@login_required
 def view_dscore():
     user_name = get_logged_in_user_details()
     ALLOWED_COLUMNS = [
@@ -1898,6 +1935,8 @@ def delete_employee(id):
     return jsonify({'success': True})
 
 @app.route('/operational_excellence/<string:emp_id>', methods=['GET', 'POST'])
+@login_required
+@role_required("admin", "super_admin")
 def operational_excellence(emp_id):
     user_name = get_logged_in_user_details()
     role = user_name['role']
@@ -1987,6 +2026,7 @@ def operational_excellence(emp_id):
 
 
 @app.route("/full_table_view/<string:id>", methods=['GET'])
+@login_required
 def full_table_view(id):
     user_name = get_logged_in_user_details()
     if user_name:
@@ -2409,6 +2449,8 @@ def full_table_view(id):
     return "No data found"
     
 @app.route('/approve_users')
+@login_required
+@role_required("admin", "super_admin")
 def approve_users():
     pending_users = Employee.query.filter_by(is_approved=False).all()
     approved_users=Employee.query.filter_by(is_approved=True).all()
@@ -2433,6 +2475,8 @@ def approve_selected():
         return jsonify({"success": False, "message": str(e)}), 500
         
 @app.route('/form_bulk_upload', methods=['GET','POST'])
+@login_required
+@role_required("manager")
 def form_bulk_upload():
     
     # field_to_column = {
@@ -2868,6 +2912,8 @@ def form_bulk_upload():
     return render_template("form_bulk_upload.html")
 
 @app.route("/set_targets/<string:emp_id>",methods=["GET","POST"])
+@login_required
+@role_required("admin", "manager")
 def set_targets(emp_id):
     role=request.args.get('role')
     target_month = request.form.get("target_month")
@@ -2978,6 +3024,8 @@ def set_targets(emp_id):
     return render_template("set_targets.html", employee=employee,values=values,current_year=current_year,fields=fields,role=role,monthsDict=monthsDict,years=years)
 
 @app.route("/project_targets", methods=["GET", "POST"])
+@login_required
+@role_required("admin", "super_admin")
 def project_targets():
     column_mapping = {
         "Approval Manager": "ApprovalManager"  # Only for non-matching columns
@@ -3044,6 +3092,7 @@ def approve_targets(emp_id, role):
         return redirect(url_for('team_dmax_table')) 
 
 @app.route('/view_targets')
+@login_required
 def view_targets():
     emp_id = request.args.get('emp_id')
     month = request.args.get('month')
@@ -3065,6 +3114,7 @@ def view_targets():
     return render_template('view_targets.html', fields=fields,monthsDict=monthsDict,values=values)
 
 @app.route('/profile')
+@login_required
 def profile():
     user=get_logged_in_user_details()
     if user:
@@ -3286,6 +3336,11 @@ def check_operational_excellence():
             })
 
     return jsonify({"confirm_needed": False}) 
+
+@app.route("/test12")
+@login_required
+def test():
+    return "hello"
 
 with app.app_context():
         
