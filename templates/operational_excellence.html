@@ -143,8 +143,8 @@
                 alert("Please enter a valid integer for DTOUCH/Soft Skill.");
                 event.preventDefault();  // ⛔ Stops form submission
             }
-            else if (parseInt(dtouch) < 10) {
-                alert("DTOUCH/Soft Skill must be greater than or equal to 10.");
+            else if (parseInt(dtouch) < 10 || parseInt(dtouch) > 100) {
+                alert("DTOUCH/Soft Skill must be in range of 10 to 100.");
                 event.preventDefault();
             }
         
@@ -154,8 +154,8 @@
                     event.preventDefault();
                     return;
                 } 
-                if (parseInt(newInitiativesValue) <= 10) {  // ✅ FIXED: Converted to number
-                    alert("New Initiatives must be greater than 10.");
+                if (parseInt(newInitiativesValue) < 10 || parseInt(newInitiativesValue) > 100) {  // ✅ FIXED: Converted to number
+                    alert("New Initiatives must be in range of 10 to 100.");
                     event.preventDefault();
                     return;
                 }

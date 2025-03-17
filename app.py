@@ -1126,7 +1126,11 @@ def employee_upload():
     if request.method=="POST":
         try:
             file = request.files['file']  # Get the uploaded file
-
+            try:
+                wb = load_workbook(file, data_only=True, keep_links=False)
+                flash(f"Sheet names: {wb.sheetnames}", "info")
+            except Exception as e:
+                flash(f"Error reading workbook: {str(e)}", "danger")
             # Load the workbook directly from the file object
             wb = load_workbook(file)  # No need for BytesIO here
             ws = wb.active
@@ -1134,8 +1138,7 @@ def employee_upload():
             column_mapping = {
                 "Employee Name":"emp_name",	
                 "Employee ID":	"emp_id",
-                "Employee Email":"emp_email", 
-                "Today's Date":"emp_date",	
+                "Employee Email":"emp_email",
                 "Select your Project":"emp_project",	
                 "Designation":"emp_designation",	 
                 "Lead/Spocs":"reporting_manager",
@@ -1172,7 +1175,8 @@ def employee_upload():
                     
                     emp_email = employee_data.get("emp_email", "")
                     emp_id = employee_data.get("emp_id", "")
-                    emp_name=employee_data.get("emp_name", "")            
+                    emp_name=employee_data.get("emp_name", "")  
+                    today_date = datetime.today().strftime('%Y-%m-%d')          
                     reporting_manager = employee_data.get("reporting_manager", "").strip().lower()
                     actual_reporting_manager = employee_data.get("actual_reporting_manager", "").strip().lower()        
                     existing_employee_data = (
@@ -1216,47 +1220,12 @@ def employee_upload():
                     #         db.session.commit()
                     #         flash(f"Updated reporting manager for employee '{emp_name}' to '{reporting_manager}'.", "success")
                     employee_data["emp_designation"] = corrections.get(designation, designation)
-                if 'emp_date' in employee_data:
-                    emp_date = employee_data['emp_date']
-
-                    # if isinstance(emp_date, datetime):
-                    #     emp_date = emp_date.date()  # Removes the time and keeps only the date
-                    #     print("Date without time:", emp_date)
-                    if isinstance(emp_date, datetime):
-                        # Convert to YYYY-MM-DD string
-                        print("datetime")
-                        emp_date = emp_date.strftime('%Y-%m-%d')
-
-                    elif isinstance(emp_date, (int, float)):
-                        print("int or float")
-
-                        try:
-                            emp_date = datetime(1899, 12, 30) + timedelta(days=int(emp_date))
-                            emp_date = emp_date.strftime('%Y-%m-%d')
-                        except Exception as e:
-                            print("Error converting Excel date:", e)
-                            emp_date = ""  # Set empty string on failure   
-
-                    # If emp_date is a string, convert it to a date object
-                    # elif isinstance(emp_date, str):
-                    #     try:
-                    #         emp_date = datetime.strptime(emp_date, '%Y-%m-%d').date()  # Convert to date
-                    #         print("Successfully parsed the date:", emp_date)
-                    #     except ValueError:
-                    #         print("Incorrect date format")
-                    #         emp_date = None
-                    elif isinstance(emp_date, str):
-                        print("date_string")
-                        try:
-                            emp_date = datetime.strptime(emp_date, '%Y-%m-%d').date().strftime('%Y-%m-%d')
-                        except ValueError:
-                            print("Incorrect date format, setting to empty string")
-                            emp_date = ""
-                    employee_data['emp_date'] = emp_date        
+                      
    
                    
                 emp_name = employee_data.get("emp_name")
                 emp_email = employee_data.get("emp_email")
+                emp_date = datetime.today().strftime('%Y-%m-%d')
                 actual_reporting_manager = employee_data.get("actual_reporting_manager")
                 if not emp_name or not emp_email:
                     continue
@@ -1307,7 +1276,8 @@ def employee_upload():
                     #     except Exception as e:
                     #         print(e)
                     #         flash("Failed to update emp_date for existing employees.", "danger")          
-
+                employee_data["emp_date"] = emp_date    
+                
                 employee = Employee_information(**employee_data)
                 # emp_id = employee_data['emp_id']
                 # target_month = employee_data['target_month']
@@ -1336,7 +1306,7 @@ def employee_upload():
                 
             # # Commit all changes to the database
             db.session.commit() 
-            
+            flash("Employees uploaded successfully!", "success")
         except Exception as e:
             print("e",e)   
             flash("Failed to upload employees. Please check the sample file.", "danger")
@@ -1372,10 +1342,7 @@ def dmax_table():
     #     .group_by(Employee_information.emp_designation)
     #     .all()
     # )
-    designation_counts = db.session.query(
-            Employee_information.emp_designation, 
-            func.count(Employee_information.emp_designation)
-        )
+    
     
     page_size = session.get('page_size', default_page_size)
     search_term = request.args.get("search_term", "").strip()
@@ -1398,9 +1365,19 @@ def dmax_table():
     
 
     query = Dform.query.filter(False)
+    designation_query=Employee_information.query.filter(False)
+
     if project_names:
         query = Dform.query.filter(Dform.project.in_(project_names))
-    
+        designation_query=Employee_information.query.filter(Employee_information.emp_project.in_(project_names))
+    for desig in designation_query:
+        print(desig.emp_name)      
+    designation_counts = (
+        designation_query
+        .with_entities(Employee_information.emp_designation, func.count(Employee_information.emp_designation))
+        .group_by(Employee_information.emp_designation)
+        
+    )
     if search_term:
         query = query.filter(func.lower(Dform.employee_name) == search_term.lower())
         designation_counts = designation_counts.filter(func.lower(Employee_information.emp_name).ilike(f"%{search_term.lower()}%"))
@@ -1413,7 +1390,7 @@ def dmax_table():
     if selected_month:
         query=query.filter(extract('month', Dform.today_date) == int(selected_month))  
     
-    designation_counts = designation_counts.group_by(Employee_information.emp_designation).all()
+    designation_counts = designation_counts.all()
     labels = [row[0] for row in designation_counts]  # Designation names
     scores = [row[1] for row in designation_counts]  # Counts
     if page_size:  # If 'All' is not selected, paginate based on page size
@@ -3275,7 +3252,9 @@ def approve_employee():
     if formatted_month > 1:  # Only check if it's NOT January
         last_approval = (
             DmaxApprovals.query.filter(
-                DmaxApprovals.employee_email == email
+                DmaxApprovals.employee_email == email,
+                (DmaxApprovals.approved_year < formatted_year) | 
+                ((DmaxApprovals.approved_year == formatted_year) & (DmaxApprovals.approved_month < formatted_month))
             )
             .order_by(DmaxApprovals.approved_year.desc(), DmaxApprovals.approved_month.desc())
             .first()
