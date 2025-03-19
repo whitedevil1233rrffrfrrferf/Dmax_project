@@ -719,7 +719,7 @@ def home():
             # results['BP']=0   
             results['BQ'] = 0
             results['BR'] = 0 
-        print(results['BP'])     
+            
         results['BL'] = 0
         results['BM'] = 0
         # Loop through the actual-to-target mapping and apply the formula
@@ -766,6 +766,8 @@ def home():
                             )
 
         if results['BP']==0:
+            results['BL']=request.form.get('target')
+            print("BL",results['BL'])
             results['BN']=0
             results['BO']=0
             results['BS']=0
