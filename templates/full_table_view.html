@@ -56,9 +56,11 @@
                         <table class="table highlighted_row">
                             <thead>
                                 <tr>
-                                    <th scope="col" rowspan="3" class="table_header" style="width:0.8%;">
-                                        <input type="checkbox" id="selectAll">
-                                    </th>
+                                    {% if employee|length > 1 %}
+                                        <th scope="col" rowspan="3" class="table_header" style="width:0.8%;">
+                                            <input type="checkbox" id="selectAll">
+                                        </th>
+                                    {% endif %}
 
                                     <th scope="col" rowspan="3" class="table_header">Name</th>
                                     <th scope="col" rowspan="3" style="text-align: center !important;" class="table_header">Date</th>
@@ -117,7 +119,11 @@
                                 {% if employee|length > 0 %}
                                 {% for emp in employee %}
                                     <tr>
-                                        <td class="table_header"><input type="checkbox" class="rowCheckbox " value="{{emp.id}}"></td>
+                                        {% if employee|length > 1 %}
+                                            <td class="table_header">
+                                                <input type="checkbox" class="rowCheckbox" value="{{ emp.id }}">
+                                            </td>
+                                        {% endif %}
                                         {% for column in ALLOWED_COLUMNS %}
                                             <td class="table_header">{{ emp | get_attr(column) }}</td>
                                         {% endfor %}

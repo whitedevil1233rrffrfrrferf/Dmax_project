@@ -1478,6 +1478,10 @@ def team_dmax_table():
                 employees_under_manager = Employee_information.query.filter(False)
         if role=="manager":    
             employees_under_manager = Employee_information.query.filter(func.lower(Employee_information.reporting_manager)==user_name)
+            projects_under_manager = ProjectTargets.query.with_entities(ProjectTargets.Project).filter(
+                func.lower(ProjectTargets.Lead) == user_name.lower()
+            ).all()
+            project_names = [proj[0] for proj in projects_under_manager]
         elif role == "crewmate":
             employees_under_manager = Employee_information.query.filter(
                 func.lower(Employee_information.emp_email) == func.lower(user_email)
@@ -1567,7 +1571,7 @@ def team_dmax_table():
                     "is_approval_manager": is_approval_manager if is_approval_manager else False     
                                         })
                 
-        return render_template('team_dmax_table.html',employees=filtered_employees,user_name=user_name,years=last_ten_years,selected_month=selected_month, current_month=current_month,monthsDict=monthsDict,current_year=current_year,selected_year=selected_year,selected_month_name=selected_month_name,projects=projects,selected_project=selected_project,actual_role=actual_role)
+        return render_template('team_dmax_table.html',employees=filtered_employees,user_name=user_name,years=last_ten_years,selected_month=selected_month, current_month=current_month,monthsDict=monthsDict,current_year=current_year,selected_year=selected_year,selected_month_name=selected_month_name,projects=project_names,selected_project=selected_project,actual_role=actual_role)
     
     return "No user found or not logged in."  
 
@@ -3078,6 +3082,8 @@ def view_targets():
     emp_id = request.args.get('emp_id')
     month = request.args.get('month')
     year=request.args.get('year')
+    user_details = get_logged_in_user_details()
+    role = user_details["role"] if user_details else None
     target = Target_columns.query.filter_by(
         emp_id=emp_id, 
         target_month=month, 
@@ -3092,7 +3098,7 @@ def view_targets():
     if target is None:
         return "No target found for this employee for the specified month and year.", 404
     fields = {column.name: getattr(target, column.name) for column in Target_columns.__table__.columns}
-    return render_template('view_targets.html', fields=fields,monthsDict=monthsDict,values=values)
+    return render_template('view_targets.html', fields=fields,monthsDict=monthsDict,values=values,role=role)
 
 @app.route('/profile')
 @login_required

@@ -144,7 +144,7 @@
                                     <td><input type="number" value="{{ fields.get('test_case_creation_target',0) }}" class="table_inpt" id="test_case_creation_target" name="test_case_creation_target" ></td>
                                     <td><input type="number" value="{{ fields.get('test_case_updation_target',0) }}" class="table_inpt" id="test_case_updation_target" name="test_case_updation_target"></td>
                                     <td><input type="number" value="{{ fields.get('test_case_execution_target',0) }}" class="table_inpt" id="test_case_execution_target" name="test_case_execution_target"></td>
-
+                                    <input type="hidden" id="role" value="{{ role }}">
                                 </tr>
                                 </tbody>
                         </table> 
@@ -346,6 +346,22 @@
     </div>
     <script>
         const searchUrl = "{{ url_for('search_employee') }}";
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            let role = document.getElementById("role").value;
+    
+            if (role === "Approval Manager") {
+                let inputs = document.querySelectorAll("#myForm input, #myForm textarea, #myForm select, #myForm button");
+
+                inputs.forEach(input => {
+                    input.setAttribute("readonly", true);
+                });
+    
+                // Disable submit button
+                
+            }
+        });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="{{ url_for('static', filename='index.js') }}"></script> 
