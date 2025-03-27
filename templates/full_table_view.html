@@ -16,9 +16,10 @@
         {% include 'sidemenu.html' %}
         
         <div style="margin-left:7rem;">
-                
-            <h1 style="text-align: center; width:100%; margin-left:4%; " class="heading">{{ employee[0].employee_name }}'s Record</h1> 
-            <div class="filter_div container" style="margin-top:3rem; margin-bottom: 3rem;">
+            {% if employee and employee|length > 0 %}    
+                <h1 style="text-align: center; width:100%; margin-left:4%; " class="heading">{{ employee[0].employee_name }}'s Record</h1> 
+            {% endif %}    
+            <div class="filter_div container" style="margin-top:3rem; margin-bottom: 3rem; display: flex; ">
                 <div class="inner_filter_div">
                     <label for="date">Date:</label>
                     <input type="date" id="date" name="date" onchange="handleFilters()" value="{{ selected_date }}">
@@ -48,7 +49,7 @@
               </div>
                 
             </div>
-            {% if employee|length > 0 %}
+            
                 <div class="table my-9">
                     
                     
@@ -113,6 +114,7 @@
                                 
                             </thead>
                             <tbody>
+                                {% if employee|length > 0 %}
                                 {% for emp in employee %}
                                     <tr>
                                         <td class="table_header"><input type="checkbox" class="rowCheckbox " value="{{emp.id}}"></td>
@@ -131,8 +133,7 @@
 
                             </tbody>
                         </table>
-            {% else %}
-                <p class="no-data-message">No values found</p>
+            
             {% endif %}
                    
             </div>
@@ -221,18 +222,23 @@
                     <th scope="col" class="table_header">Production%</th>              
                   </tr>
             </thead> -->
-            
-            <div style="margin-left: 20%; display: flex; justify-content: space-between;">
-                <a href="{{ request.path }}?{{ request.query_string.decode() }}&download_excel=1" class="btn btn-primary">
-                    Download Excel
-                </a>
-                {% if role != "crewmate" and approved != "Yes" %}
-                    <button id="deleteSelected" class="btn btn-danger">Delete Selected</button>
-                {% endif %}
-            </div>
+            {% if employee and employee|length > 0 %}
+                <div style="margin-left: 20%; display: flex; justify-content: space-between;">
+                    <a href="{{ request.path }}?{{ request.query_string.decode() }}&download_excel=1" class="btn btn-primary">
+                        Download Excel
+                    </a>
+                    {% if role != "crewmate" and approved != "Yes" %}
+                        <button id="deleteSelected" class="btn btn-danger">Delete Selected</button>
+                    {% endif %}
+                </div>
+            {% endif %}    
             
     <script>
-        homeUrl = "{{ url_for('full_table_view', id=employee[0].employee_id) }}";
+        {% if employee and employee|length > 0 %}
+            homeUrl = "{{ url_for('full_table_view', id=employee[0].employee_id) }}";
+        {% else %}
+            homeUrl = null;    
+        {% endif %}    
     </script>  
     <script>
         deleteUrl="{{ url_for('delete_employee_data') }}";

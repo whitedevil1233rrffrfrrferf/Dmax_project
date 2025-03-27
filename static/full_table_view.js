@@ -22,7 +22,7 @@ function handleFilters() {
         // If no date is selected, remove it from the URL parameters
         urlParams.delete('year');
     }
-    window.location.href = `${homeUrl}?${urlParams.toString()}`;
+    window.location.href = `${window.location.pathname}?${urlParams.toString()}`;
     
 }
 document.getElementById("selectAll").addEventListener("change", function() {

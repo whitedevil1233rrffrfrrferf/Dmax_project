@@ -86,7 +86,8 @@
                 <ul class="special_list" style="margin-left:4.6rem;">
                     <li>Submit the form for the absentees too</li>
                     <li>Submit the form for Saturday's without fail</li>
-                    <li>Don't forget to fill Attendance at the end</li>
+                    <li>Don't forget to fill Attendance</li>
+                    <li>Client escalations (If anyone received Escalation then put 1 for all days in that month else 0)</li>
                 </ul>
             <form method="post" action="{{url_for('home')}}" id="myForm" autocomplete="off">
                 <div class="form_div first_form_div" style="margin-left:auto;margin-right: auto; height:16rem;">
@@ -487,7 +488,7 @@
                                 
                             </tr>
                             <tr>
-                                <td class="row_data">Spelling/Typo errors</td>
+                                <td class="row_data">Spelling/Typo errors (carries 0.1 for 1 error)</td>
                                 <td><input type="number" value="0" class="table_inpt" id="spel_errors" name="spel_errors" step="0.1"></td>
                             </tr>
                             <tr>

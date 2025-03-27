@@ -767,7 +767,6 @@ def home():
 
         if results['BP']==0:
             results['BL']=request.form.get('target')
-            print("BL",results['BL'])
             results['BN']=0
             results['BO']=0
             results['BS']=0
@@ -1045,7 +1044,6 @@ def search_employee():
     return jsonify({"employees": employees_list})
 
 @app.route('/register', methods=['GET','POST'])
-@login_required
 def register():
     if request.method=="POST":
         username=request.form["username"]
@@ -2037,6 +2035,10 @@ def full_table_view(id):
     approved = "Yes" if approval_exists else "No"
     filtered_query=get_first_filtered_employees(base_query, None, selected_month, selected_date, selected_year)
     employee = filtered_query.all() 
+    if not employee:
+        employee = []
+        print("Employee List:", employee)  # Debugging
+        print("Type:", type(employee)) 
     if request.args.get('download_excel') == '1':
         return generate_excel_from_template(employee)
     years = [current_year - i for i in range(11)]
@@ -2423,9 +2425,9 @@ def full_table_view(id):
                 if column in CATEGORY_TO_COLUMNS[category]:  
                     filtered_columns.append(column)
                   
-    if employee:
-        return render_template("full_table_view.html", employee=employee, ALLOWED_COLUMNS=filtered_columns,TABLE_HEADERS=TABLE_HEADERS,years=years,selected_year=int(selected_year),selected_date=selected_date,monthsDict=monthsDict,current_month=current_month,selected_month=selected_month,project=project,role=role,approved=approved)
-    return "No data found"
+    
+    return render_template("full_table_view.html", employee=employee, ALLOWED_COLUMNS=filtered_columns,TABLE_HEADERS=TABLE_HEADERS,years=years,selected_year=int(selected_year),selected_date=selected_date,monthsDict=monthsDict,current_month=current_month,selected_month=selected_month,project=project,role=role,approved=approved)
+    
     
 @app.route('/approve_users')
 @login_required
