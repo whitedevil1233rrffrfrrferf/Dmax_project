@@ -1589,6 +1589,13 @@ def view_dscore():
         "approved": "Approved",
         "waiting for approval": "In Process"
     }
+    production_multipliers = {
+        "Intern": 0.3,
+        "Sr.QA Engineer": 0.3,
+        "Jr.QA Engineer": 0.4,
+        "QA Engineer": 0.35,
+        "QA Lead": 0.2
+    }
     project_names = []
     years = [current_year - i for i in range(11)]
     # ALLOWED_COLUMNS = [
@@ -1695,16 +1702,22 @@ def view_dscore():
                     #             for column in ALLOWED_COLUMNS         # Filter by allowed columns
                     #         }
                     #     )
+                    print("Designations:", [matched.designation for matched in matched_employees])
                     averages = get_averages_for_filtered_employees(matched_employees)
                     if averages:
-                        
+                        emp_designation = matched_employees[0].designation  # Get the designation
+                        prod_multiplier = production_multipliers.get(emp_designation, 1.0)
+                        print("Designation:", emp_designation, "Multiplier:", prod_multiplier)
+                        adjusted_production = round(
+                            (averages["avg_actual"] / averages["avg_target"]) * prod_multiplier, 2
+                        ) if averages["avg_target"] != 0 else 0  # Avoid division by zero
                         filtered_employees.append(
                         {  "id": emp.id,
                             "employee_id": emp.emp_id,
                             "employee_name": emp.emp_name,
                             "target": averages["avg_target"],  # ✅ Correct way to access dictionary values
                             "actual": averages["avg_actual"],
-                            "production": averages["avg_production"],
+                            "production": adjusted_production,
                             "quality": averages["avg_quality"],
                             "attendance": averages["avg_attendance"],
                             "skill": averages["avg_skill"],
@@ -1728,7 +1741,7 @@ def view_dscore():
                 selected_date,
                 selected_year
             )
-            filtered_employees=[]
+            filtered_employees=[]   
             if matched_employees.count() > 0:
                 first_entry = matched_employees.first()
                 if first_entry:
@@ -1753,6 +1766,13 @@ def view_dscore():
                             approval_status = approval_record.status.capitalize()  # e.g., "Approved", "Rejected", etc.
                         else:
                             approval_status = None
+                        emp_designation = first_entry.designation  # Assuming this field exists
+                        prod_multiplier = production_multipliers.get(emp_designation, 1.0)  # Default to 1.0
+
+                        # Compute adjusted production and round to 2 decimal places
+                        adjusted_production = round(
+                            (averages["avg_actual"] / averages["avg_target"]) * prod_multiplier, 2
+                        ) if averages["avg_target"] != 0 else 0  # Avoid division by zero
                         filtered_employees.append(
                             {
                                 "id": first_entry.id if first_entry else None,  # No employee ID needed for crewmates, or use an appropriate field
@@ -1760,7 +1780,7 @@ def view_dscore():
                                 "employee_id": first_entry.employee_id,  # Assuming email identifies the crewmate
                                 "target": averages["avg_target"],  # ✅ Correct way to access dictionary values
                                 "actual": averages["avg_actual"],
-                                "production": averages["avg_production"],
+                                "production": adjusted_production,
                                 "quality": averages["avg_quality"],
                                 "attendance": averages["avg_attendance"],
                                 "skill": averages["avg_skill"],
@@ -1861,6 +1881,12 @@ def view_dscore():
                     
                     # If averages are found, append to the filtered employees list
                     if averages:
+                        emp_designation = matched_employees[0].designation  # Get the designation
+                        prod_multiplier = production_multipliers.get(emp_designation, 1.0)
+                        print("Designation:", emp_designation, "Multiplier:", prod_multiplier)
+                        adjusted_production = round(
+                            (averages["avg_actual"] / averages["avg_target"]) * prod_multiplier, 2
+                        ) if averages["avg_target"] != 0 else 0  # Avoid division by zero
                          # Debugging line to check the results
 
                         # Append the employee data with averages to the result list
@@ -1871,7 +1897,7 @@ def view_dscore():
                                 "employee_id": emp.emp_id,
                                 "target": averages["avg_target"],  # ✅ Correct way to access dictionary values
                                 "actual": averages["avg_actual"],
-                                "production": averages["avg_production"],
+                                "production": adjusted_production,
                                 "quality": averages["avg_quality"],
                                 "attendance": averages["avg_attendance"],
                                 "skill": averages["avg_skill"],
