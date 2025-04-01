@@ -1705,12 +1705,16 @@ def view_dscore():
                     print("Designations:", [matched.designation for matched in matched_employees])
                     averages = get_averages_for_filtered_employees(matched_employees)
                     if averages:
-                        emp_designation = matched_employees[0].designation  # Get the designation
+                        emp_designation = corrections.get(matched_employees[0].designation, matched_employees[0].designation)
                         prod_multiplier = production_multipliers.get(emp_designation, 1.0)
-                        print("Designation:", emp_designation, "Multiplier:", prod_multiplier)
+                        
                         adjusted_production = round(
                             (averages["avg_actual"] / averages["avg_target"]) * prod_multiplier, 2
                         ) if averages["avg_target"] != 0 else 0  # Avoid division by zero
+                        print("average_actual",averages["avg_actual"])
+                        print("average_target",averages["avg_target"])
+                        print("adjusted_production",adjusted_production)
+                        print("Designation:", emp_designation, "Multiplier:", prod_multiplier)
                         filtered_employees.append(
                         {  "id": emp.id,
                             "employee_id": emp.emp_id,
@@ -1766,7 +1770,8 @@ def view_dscore():
                             approval_status = approval_record.status.capitalize()  # e.g., "Approved", "Rejected", etc.
                         else:
                             approval_status = None
-                        emp_designation = first_entry.designation  # Assuming this field exists
+                            
+                        emp_designation = corrections.get(first_entry.designation ,first_entry.designation) # Assuming this field exists
                         prod_multiplier = production_multipliers.get(emp_designation, 1.0)  # Default to 1.0
 
                         # Compute adjusted production and round to 2 decimal places
@@ -1881,7 +1886,8 @@ def view_dscore():
                     
                     # If averages are found, append to the filtered employees list
                     if averages:
-                        emp_designation = matched_employees[0].designation  # Get the designation
+                        
+                        emp_designation = corrections.get(matched_employees[0].designation,matched_employees[0].designation) # Get the designation
                         prod_multiplier = production_multipliers.get(emp_designation, 1.0)
                         print("Designation:", emp_designation, "Multiplier:", prod_multiplier)
                         adjusted_production = round(
