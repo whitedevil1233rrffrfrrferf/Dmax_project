@@ -1709,8 +1709,8 @@ def view_dscore():
                         prod_multiplier = production_multipliers.get(emp_designation, 1.0)
                         
                         adjusted_production = round(
-                            (averages["avg_actual"] / averages["avg_target"]) * prod_multiplier, 2
-                        ) if averages["avg_target"] != 0 else 0  # Avoid division by zero
+                            ((averages["avg_actual"] / averages["avg_target"]) * prod_multiplier * 100), 2
+                        ) if averages["avg_target"] != 0 else 0
                         print("average_actual",averages["avg_actual"])
                         print("average_target",averages["avg_target"])
                         print("adjusted_production",adjusted_production)
@@ -1726,7 +1726,13 @@ def view_dscore():
                             "attendance": averages["avg_attendance"],
                             "skill": averages["avg_skill"],
                             "new_initiatives": averages["avg_new_initiatives"],
-                            "Dmax_score": averages["avg_Dmax_score"],
+                            "Dmax_score": (
+                                        adjusted_production +
+                                        averages["avg_quality"] +
+                                        averages["avg_attendance"] +
+                                        averages["avg_skill"] +
+                                        averages["avg_new_initiatives"]
+                                    ),
                             "project":emp.emp_project,
                             "project_status":project_status,
                             "approval_status":approval_status,
@@ -1776,8 +1782,12 @@ def view_dscore():
 
                         # Compute adjusted production and round to 2 decimal places
                         adjusted_production = round(
-                            (averages["avg_actual"] / averages["avg_target"]) * prod_multiplier, 2
-                        ) if averages["avg_target"] != 0 else 0  # Avoid division by zero
+                            ((averages["avg_actual"] / averages["avg_target"]) * prod_multiplier * 100), 2
+                        ) if averages["avg_target"] != 0 else 0
+                        print("average_actual",averages["avg_actual"])
+                        print("average_target",averages["avg_target"])
+                        print("adjusted_production",adjusted_production)
+                        print("Designation:", emp_designation, "Multiplier:", prod_multiplier)
                         filtered_employees.append(
                             {
                                 "id": first_entry.id if first_entry else None,  # No employee ID needed for crewmates, or use an appropriate field
@@ -1790,7 +1800,13 @@ def view_dscore():
                                 "attendance": averages["avg_attendance"],
                                 "skill": averages["avg_skill"],
                                 "new_initiatives": averages["avg_new_initiatives"],
-                                "Dmax_score": averages["avg_Dmax_score"],
+                                "Dmax_score": (
+                                        adjusted_production +
+                                        averages["avg_quality"] +
+                                        averages["avg_attendance"] +
+                                        averages["avg_skill"] +
+                                        averages["avg_new_initiatives"]
+                                    ),
                                 "project":first_entry.project,
                                 "project_status": project_status,
                                 "approval_status":approval_status
@@ -1891,8 +1907,8 @@ def view_dscore():
                         prod_multiplier = production_multipliers.get(emp_designation, 1.0)
                         print("Designation:", emp_designation, "Multiplier:", prod_multiplier)
                         adjusted_production = round(
-                            (averages["avg_actual"] / averages["avg_target"]) * prod_multiplier, 2
-                        ) if averages["avg_target"] != 0 else 0  # Avoid division by zero
+                            ((averages["avg_actual"] / averages["avg_target"]) * prod_multiplier * 100), 2
+                        ) if averages["avg_target"] != 0 else 0
                          # Debugging line to check the results
 
                         # Append the employee data with averages to the result list
@@ -1908,7 +1924,13 @@ def view_dscore():
                                 "attendance": averages["avg_attendance"],
                                 "skill": averages["avg_skill"],
                                 "new_initiatives": averages["avg_new_initiatives"],
-                                "Dmax_score": averages["avg_Dmax_score"],
+                                "Dmax_score": (
+                                        adjusted_production +
+                                        averages["avg_quality"] +
+                                        averages["avg_attendance"] +
+                                        averages["avg_skill"] +
+                                        averages["avg_new_initiatives"]
+                                    ),
                                 "project":emp.emp_project,
                                 "project_status": project_status,
                                 "approval_status": approval_status,
@@ -3055,12 +3077,14 @@ def project_targets():
         ws=wb.active
         excel_headers = [cell.value for cell in ws[1]]
         db_columns = [column_mapping.get(header, header) for header in excel_headers]
+        has_data = False
         for row in ws.iter_rows(min_row=2, values_only=True):
             if not any(row):  # Skip empty rows
                 continue
             if any(cell is None or cell == "" for cell in row):  # Check if any column is empty
                 flash(f"Skipping row with missing data", "danger")
                 continue
+            
             data_dict = dict(zip(db_columns, row))
             project_name = data_dict.get("Project")
             if project_name:
@@ -3072,8 +3096,14 @@ def project_targets():
             else:
                 employee = ProjectTargets(**data_dict)
                 db.session.add(employee)
+            has_data = True    
         
-        db.session.commit()
+        if has_data:  # Commit only if valid data was found
+            db.session.commit()
+            flash("File uploaded successfully!", "success")
+        else:
+            flash("No valid projects found in the file. Please check the template.", "warning")
+
         
     return render_template("projects_upload.html",project_targets=project_targets)
 

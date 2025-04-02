@@ -69,13 +69,13 @@
                                         {% if subcategories is mapping %}
                                             {% if category == "Production" %}
                                                 <!-- Special handling for Production category (colspan * 2) -->
-                                                <th scope="col" colspan="{{ subcategories|length * 2 }}" class="table_header">{{ category }}</th>
+                                                <th scope="col" colspan="{{ subcategories|length * 2 }}" class="table_header">{{ category.capitalize() }}</th>
                                             {% else %}
                                                 <!-- Default handling for other categories (colspan * 1) -->
-                                                <th scope="col" colspan="{{ subcategories|length }}" class="table_header">{{ category }}</th>
+                                                <th scope="col" colspan="{{ subcategories|length }}" class="table_header">{{ category.capitalize() }}</th>
                                             {% endif %}
                                         {% else %}
-                                            <th scope="col" rowspan="3" class="table_header">{{ category }}</th>
+                                            <th scope="col" rowspan="3" class="table_header">{{ category.capitalize() }}</th>
                                         {% endif %}
                                     {% endfor %}
                                 </tr>
@@ -85,10 +85,10 @@
                                             {% for subcategory, values in subcategories.items() %}
                                                 {% if category == "Production" %}
                                                     <!-- For Production subcategories, we give colspan="2" for each one -->
-                                                    <th scope="col" colspan="2" class="table_header">{{ subcategory }}</th>
+                                                    <th scope="col" colspan="2" class="table_header">{{ subcategory.capitalize() }}</th>
                                                 {% else %}
                                                     <!-- For other categories, we apply colspan="1" -->
-                                                    <th scope="col"  rowspan="2" class="table_header">{{ subcategory }}</th>
+                                                    <th scope="col"  rowspan="2" class="table_header">{{ subcategory.capitalize() }}</th>
                                                 {% endif %}
                                             {% endfor %}
                                         {% endif %}

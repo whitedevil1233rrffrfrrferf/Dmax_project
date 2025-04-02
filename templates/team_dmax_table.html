@@ -32,7 +32,7 @@
                 <div class="inner_filter_div">
                     <label for="project">Project</label>
                     <select id="project" onchange="handleFilters()" name="project">
-                        <option value="" disabled {% if not selected_project %}selected{% endif %}>Select</option>
+                        <option value=""  {% if not selected_project %}selected{% endif %}>Select</option>
                         {% for project in projects %}
                             <option value="{{ project }}" {% if project == selected_project %}selected{% endif %}>
                                 {{ project }}
