@@ -16,12 +16,12 @@
 /* Style for menu items */
 .menu-item {
     display: flex; /* Flexbox to align icon and text in a row */
-    flex-direction: row; /* Row alignment */
+    flex-direction: column; /* Row alignment */
     align-items: center; /* Vertically align icon and text */
     padding: 15px 20px;
     text-decoration: none; /* Remove underline from links */
     color: white !important; /* Text color */
-    font-size: 18px;
+    font-size: 14px;
     transition: background 0.3s ease; /* Smooth hover effect */
 }
 
@@ -39,6 +39,14 @@
 }
 inner_sidemenu_div{
     display: flex;
+}
+.menu-text {
+    font-size: 13px;
+    margin-top:0.7rem; /* Adds spacing between the icon and text */
+    white-space: nowrap;
+}
+a{
+    text-decoration: none !important; 
 }
 
 /* Responsive (Optional) - Adjust the side menu width for smaller screens */

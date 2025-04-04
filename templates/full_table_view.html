@@ -56,7 +56,7 @@
                         <table class="table highlighted_row">
                             <thead>
                                 <tr>
-                                    {% if employee|length > 1 %}
+                                    {% if approved != "Yes" %}
                                         <th scope="col" rowspan="3" class="table_header" style="width:0.8%;">
                                             <input type="checkbox" id="selectAll">
                                         </th>
@@ -118,14 +118,14 @@
                             <tbody>
                                 {% if employee|length > 0 %}
                                 {% for emp in employee %}
-                                    <tr>
-                                        {% if employee|length > 1 %}
-                                            <td class="table_header">
+                                    <tr >
+                                        {% if approved != "Yes"%}
+                                            <td class="table_row">
                                                 <input type="checkbox" class="rowCheckbox" value="{{ emp.id }}">
                                             </td>
                                         {% endif %}
                                         {% for column in ALLOWED_COLUMNS %}
-                                            <td class="table_header">{{ emp | get_attr(column) }}</td>
+                                            <td class="table_row">{{ emp | get_attr(column) }}</td>
                                         {% endfor %}
                                     </tr>
                                 {% endfor %}

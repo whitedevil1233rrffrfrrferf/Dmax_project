@@ -71,7 +71,7 @@ app.config['SQLALCHEMY_BINDS']={
     'project_targets':'sqlite:///project_targets.db',
     'dmax_approval':'sqlite:///dmax_approval.db'
 }
-db = SQLAlchemy(app)
+db = SQLAlchemy(app) 
 
 
 ###############################################  Helper Functions ###############################################
@@ -265,6 +265,14 @@ corrections = {
                     "Jr QA Engineer": "Jr.QA Engineer",
                     "QALead": "QA Lead"
                     }
+
+production_multipliers = {
+        "Intern": 0.3,
+        "Sr.QA Engineer": 0.3,
+        "Jr.QA Engineer": 0.4,
+        "QA Engineer": 0.35,
+        "QA Lead": 0.2
+    }
 
 ###############################################  Helper Variables ###############################################
 
@@ -1234,7 +1242,7 @@ def employee_upload():
                     emp_name = employee_data['emp_name']
                     actual_reporting_manager = employee_data.get('actual_reporting_manager')
                     name_exists = False 
-
+                    
                     if emp_name and emp_date and actual_reporting_manager:
                         # Extract year and month from the new employee entry
                         try:
@@ -1419,6 +1427,29 @@ def dmax_table():
     .limit(4)  # Limit to top 4
     .all()
     )
+    # for row in top_scores:
+    #     emp_id, emp_name, _ = row  # Get employee details
+
+    #     # Fetch employee data to get actual, target, quality, etc.
+    #     emp_data = query.filter(Dform.employee_id == emp_id).first()
+
+    #     if emp_data:
+    #         emp_designation = corrections.get(emp_data.designation, emp_data.designation)
+    #         prod_multiplier = production_multipliers.get(emp_designation, 1.0)
+
+    #         # Calculate adjusted production
+    #         adjusted_production = round(
+    #             ((emp_data.actual / emp_data.target) * prod_multiplier * 100), 2
+    #         ) if emp_data.target != 0 else 0
+
+    #         # ✅ UPDATE `Dmax_score` DIRECTLY
+    #         emp_data.Dmax_score = (
+    #             adjusted_production +
+    #             emp_data.quality +
+    #             emp_data.attendance +
+    #             emp_data.skill +
+    #             emp_data.new_initiatives
+    #         )
     chart_data = [
     {"name": row[1], "score": round(row[2], 2)}  # Use employee_name and avg_score
     for row in top_scores
@@ -1589,13 +1620,7 @@ def view_dscore():
         "approved": "Approved",
         "waiting for approval": "In Process"
     }
-    production_multipliers = {
-        "Intern": 0.3,
-        "Sr.QA Engineer": 0.3,
-        "Jr.QA Engineer": 0.4,
-        "QA Engineer": 0.35,
-        "QA Lead": 0.2
-    }
+    
     project_names = []
     years = [current_year - i for i in range(11)]
     # ALLOWED_COLUMNS = [

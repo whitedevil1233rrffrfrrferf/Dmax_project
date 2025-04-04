@@ -38,3 +38,7 @@ th, td {
 .row_span{
   text-align: center !important;
 }  
+.table .table_row{
+  background-color: #f5f5f5; /* Soft light gray */
+  color: black;
+}
