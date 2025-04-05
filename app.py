@@ -2028,31 +2028,32 @@ def operational_excellence(emp_id):
         designation = corrections.get(employee_info.emp_designation, employee_info.emp_designation)
         if request.method == 'POST':
             month = int(request.form.get('month'))  # Ensure it's an integer
+            print(month)
             year = int(request.form.get('year'))
             dtouch = float(request.form.get('dtouch'))
 
-            new_init = int(request.form.get('newInitiatives')) if not hide_new_initiatives else 0
-            if designation == "Intern":
-                # attendance = int((attendance * 10 / 100) * 100)
-                dtouch = float(((dtouch * 10 / 100 / 100) * 100) )
-                new_init=0
-            if designation=="Jr.QA Engineer":
-                # attendance = int((attendance * 5 / 100) * 100)
-                dtouch = float(((dtouch * 10 / 100 / 100) * 100))
-                new_init=0
-            if designation=="QA Engineer":
-                # attendance = int((attendance * 5 / 100) * 100)
-                dtouch = float(((dtouch * 5 / 100 / 100) * 100) )
-                new_init = float(((new_init * 15 / 100 / 100) * 100) )
-            if designation=="Sr.QA Engineer":
-                # attendance = int((attendance * 5 / 100) * 100)
-                dtouch = float(((dtouch * 5 / 100 / 100) * 100) )
-                new_init = float((new_init * 20 / 100 / 100) * 100)
+            new_init = float(request.form.get('newInitiatives')) if not hide_new_initiatives else 0
+            # if designation == "Intern":
+            #     # attendance = int((attendance * 10 / 100) * 100)
+            #     dtouch = float(((dtouch * 10 / 100 / 100) * 100) )
+            #     new_init=0
+            # if designation=="Jr.QA Engineer":
+            #     # attendance = int((attendance * 5 / 100) * 100)
+            #     dtouch = float(((dtouch * 10 / 100 / 100) * 100))
+            #     new_init=0
+            # if designation=="QA Engineer":
+            #     # attendance = int((attendance * 5 / 100) * 100)
+            #     dtouch = float(((dtouch * 5 / 100 / 100) * 100) )
+            #     new_init = float(((new_init * 15 / 100 / 100) * 100) )
+            # if designation=="Sr.QA Engineer":
+            #     # attendance = int((attendance * 5 / 100) * 100)
+            #     dtouch = float(((dtouch * 5 / 100 / 100) * 100) )
+            #     new_init = float((new_init * 20 / 100 / 100) * 100)
                 
-            if designation=="QA Lead":
-                # attendance = int((attendance * 5 / 100) * 100)
-                dtouch = float(((dtouch * 5 / 100 / 100) * 100) )    
-                new_init = float((new_init * 30 / 100 / 100) * 100)
+            # if designation=="QA Lead":
+            #     # attendance = int((attendance * 5 / 100) * 100)
+            #     dtouch = float(((dtouch * 5 / 100 / 100) * 100) )    
+            #     new_init = float((new_init * 30 / 100 / 100) * 100)
             start_date, end_date = get_date_range_for_month(month, year)  
             daily_records = Dform.query.filter(
                 Dform.employee_id == emp_id,
@@ -2080,7 +2081,7 @@ def operational_excellence(emp_id):
             op_excellence.start_date = start_date
             op_excellence.end_date = end_date
             db.session.commit()    
-
+            return redirect(url_for('view_dscore', month=month, year=year))
             
     return render_template('operational_excellence.html',emp_id=emp_id,months_dict=monthsDict,years=last_ten_years,desc_op_excellence=desc_op_excellence,selected_month=selected_month,selected_year=selected_year,dtouch_score=dtouch_score,new_init_score=new_init_score,hide_new_initiatives=hide_new_initiatives,role=role,emp_designation=emp_designation)
 

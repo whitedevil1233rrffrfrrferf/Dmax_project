@@ -51,7 +51,7 @@
                         <label for="newInitiatives" class="form-label">
                             New Initiatives <span id="newInitiatives-description" class="text-muted" style="font-size: 0.9rem;"></span>
                         </label>
-                        <input type="text" class="form-control" id="newInitiatives" name="newInitiatives" required  value="{{ new_init_score }}">
+                        <input type="number" class="form-control" id="newInitiatives" name="newInitiatives" required  value="{{ new_init_score }}" step="any">
                     </div>
                 {% endif %}    
                 <div style="display: flex; justify-content: space-around; margin-top:2rem;">
@@ -95,7 +95,8 @@
             }
             dtouchDescription.textContent = `(Calculates ${percentage}% of the entered value)`;
     
-            
+            dtouchInput.min = 0;
+            dtouchInput.max = percentage;
         }
 
         updatePlaceholder();
@@ -121,48 +122,16 @@
                 }
     
                 newInitiativesDescription.textContent = `(Calculates ${percentage}% of the entered value)`;
-    
+                alert(percentage)
                 // If the value is 0 or empty, clear it to show placeholder
-                
+                newInitiativesInput.min = 0;
+                newInitiativesInput.max = percentage;
             }
     
             updateNewInitiativesDescription();
         });
     </script>
-    <script>
-        document.querySelector("form").addEventListener("submit", function(event) {
-            let dtouch = document.getElementById("dtouch").value;
-            let newInitiatives = document.getElementById("newInitiatives");
-            let newInitiativesValue = newInitiatives ? newInitiatives.value : null;
-            
-            function isInteger(value) {
-                return /^\d+$/.test(value);  // ✅ Only allows whole numbers (1, 2, 3) & rejects decimals (1.1, 2.5)
-            }
-        
-            if (!isInteger(dtouch)) {
-                alert("Please enter a valid integer for DTOUCH/Soft Skill.");
-                event.preventDefault();  // ⛔ Stops form submission
-            }
-            else if (parseInt(dtouch) < 10 || parseInt(dtouch) > 100) {
-                alert("DTOUCH/Soft Skill must be in range of 10 to 100.");
-                event.preventDefault();
-            }
-        
-            if (newInitiatives && newInitiatives.offsetParent !== null) { // ✅ Check if visible
-                if (!isInteger(newInitiativesValue)) {
-                    alert("Please enter a valid integer for New Initiatives.");
-                    event.preventDefault();
-                    return;
-                } 
-                if (parseInt(newInitiativesValue) < 10 || parseInt(newInitiativesValue) > 100) {  // ✅ FIXED: Converted to number
-                    alert("New Initiatives must be in range of 10 to 100.");
-                    event.preventDefault();
-                    return;
-                }
-            }
-            
-        });
-    </script>
+    
     
 </body>
 </html>

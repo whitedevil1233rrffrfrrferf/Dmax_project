@@ -36,7 +36,7 @@ document.querySelectorAll('.approve-btn').forEach(button => {
         const year = this.dataset.year;
 
         // Step 1: Initial confirmation
-        const confirmSubmit = confirm("Are you sure you want to approve the targets?");
+        const confirmSubmit = confirm("Are you sure you want to approve the Dmax score?");
         if (!confirmSubmit) return; // Stop if user cancels
 
         // Step 2: Check Operational Excellence
