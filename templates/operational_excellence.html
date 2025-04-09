@@ -27,31 +27,31 @@
                 <select class="form-select mb-3" id="month" name="month" required>
                     <option value="" selected disabled>Please select a month</option>
                     {% for value, name in months_dict.items() %}
-                        <option value="{{ value }}" {% if selected_month == value %}selected{% endif %}>{{ name }}</option>
+                        <option value="{{ value }}" >{{ name }}</option>
                     {% endfor %}
                 </select>
                 <label for="year" class="form-label">Year</label>
                 <select class="form-select mb-3" id="year" name="year" required>
                     <option value="" selected disabled>Please select a year</option>
                     {% for year in years %}
-                        <option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>
+                        <option value="{{ year }}" >
                             {{ year }}
                         </option>
                     {% endfor %}
                 </select>
                 <div class="mb-3">
                     <label for="dtouch" class="form-label">
-                        DTOUCH/Soft Skill <span id="dtouch-description" class="text-muted" style="font-size: 0.9rem;"></span>
+                        DTOUCH/Soft Skill in %<span id="dtouch-description" class="text-muted" style="font-size: 0.9rem;"></span>
                     </label>
-                    <input type="number" class="form-control" id="dtouch" name="dtouch" value="{{ dtouch_score }}" required step="any" placeholder="Enter value">
+                    <input type="number" class="form-control" id="dtouch" name="dtouch"  required step="any" >
                 </div>
                 
                 {% if not hide_new_initiatives %}
                     <div class="mb-3" >
                         <label for="newInitiatives" class="form-label">
-                            New Initiatives <span id="newInitiatives-description" class="text-muted" style="font-size: 0.9rem;"></span>
+                            New Initiatives in %<span id="newInitiatives-description" class="text-muted" style="font-size: 0.9rem;"></span>
                         </label>
-                        <input type="number" class="form-control" id="newInitiatives" name="newInitiatives" required  value="{{ new_init_score }}" step="any">
+                        <input type="number" class="form-control" id="newInitiatives" name="newInitiatives" required   step="any">
                     </div>
                 {% endif %}    
                 <div style="display: flex; justify-content: space-around; margin-top:2rem;">
@@ -93,7 +93,7 @@
             if (["Intern", "Jr.QA Engineer"].includes(designation)) {
                 percentage = 10; // 10% for Intern & JrQAEngineer
             }
-            dtouchDescription.textContent = `(Calculates ${percentage}% of the entered value)`;
+            dtouchDescription.textContent = `(Max Weightage ${percentage}% )`;
     
             dtouchInput.min = 0;
             dtouchInput.max = percentage;
@@ -121,8 +121,8 @@
                     percentage = 30;
                 }
     
-                newInitiativesDescription.textContent = `(Calculates ${percentage}% of the entered value)`;
-                alert(percentage)
+                newInitiativesDescription.textContent = `(Max Weightage ${percentage}% )`;
+                
                 // If the value is 0 or empty, clear it to show placeholder
                 newInitiativesInput.min = 0;
                 newInitiativesInput.max = percentage;

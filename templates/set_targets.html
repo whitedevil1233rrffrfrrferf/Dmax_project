@@ -107,7 +107,7 @@
                     <div class="flex_first_div">
                         <div class="inside_flex_div">
                             <label for="target_month" class="two_label">Target month:</label>
-                            <select id="target_month" class="proj_Sel select"  name="target_month">
+                            <select id="target_month" class="proj_Sel select"  name="target_month" >
                                 {% for key, value in monthsDict.items() %}
                                     <option value="{{ value }}" {% if fields.get('target_month') == value %}selected{% endif %}>
                                         {{ value }}
@@ -351,14 +351,30 @@
         document.addEventListener("DOMContentLoaded", function () {
             let role = document.getElementById("role").value;
     
+            // Always make employee_name readonly
+            let employeeNameField = document.getElementById("employee_name");
+            if (employeeNameField) {
+                employeeNameField.setAttribute("readonly", true);
+            }
+    
             if (role === "Approval Manager") {
-                let inputs = document.querySelectorAll("#myForm input, #myForm textarea, #myForm select, #myForm button");
-
-                inputs.forEach(input => {
-                    input.setAttribute("readonly", true);
+                // Set specific fields as readonly for Approval Manager only
+                const readonlyForApprovalManager = [
+                    "employee_Date", 
+                    "emp_id", 
+                    "target_month",
+                    "target_year"
+                    // Add more IDs here if needed
+                ];
+                document.getElementById("target_month").disabled = true;
+                readonlyForApprovalManager.forEach(id => {
+                    let field = document.getElementById(id);
+                    if (field) {
+                        field.setAttribute("readonly", true);
+                    }
                 });
     
-                // Disable submit button
+                // Also disable all form inputs/buttons if needed (optional)
                 
             }
         });

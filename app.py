@@ -1122,7 +1122,7 @@ def edit_employee(employee_id):
         
         db.session.commit()
         
-        return redirect(url_for('employee_info'))
+        
         
     # Render the edit form with existing values
     return render_template('edit_employee.html', employee=employee,projects=projects,designations=designations)
@@ -1463,10 +1463,53 @@ def dmax_table():
         paginated_avg_scores = avg_query.paginate(page=page, per_page=page_size, error_out=False)
     else:
         paginated_avg_scores = avg_query.paginate(page=1, per_page=avg_query.count(), error_out=False)
-    avg_scores_list = [
-        {"employee_id": row[0], "employee_name": row[1], "avg_score": round(row[2], 2)}
-        for row in paginated_avg_scores.items
-    ]
+    # avg_scores_list = [
+    #     {"employee_id": row[0], "employee_name": row[1], "avg_score": round(row[2], 2)}
+    #     for row in paginated_avg_scores.items
+    # ]
+    avg_scores_list = []
+
+    for row in paginated_avg_scores.items:
+        emp_id = row[0]
+        emp_name = row[1]
+
+        # 💡 Filter again to match same filters per employee!
+        filtered_emp_query = query.filter(Dform.employee_id == emp_id)
+
+        emp_data = (
+            filtered_emp_query.with_entities(
+                func.avg(Dform.actual),
+                func.avg(Dform.target),
+                func.avg(Dform.quality),
+                func.avg(Dform.attendance),
+                func.avg(Dform.skill),
+                func.avg(Dform.new_initiatives),
+                Dform.designation
+            )
+            .group_by(Dform.designation)
+            .first()
+        )
+
+        if emp_data:
+            avg_actual, avg_target, avg_quality, avg_attendance, avg_skill, avg_new_initiatives, raw_designation = emp_data
+
+            corrected_designation = corrections.get(raw_designation, raw_designation)
+            multiplier = production_multipliers.get(corrected_designation, 1.0)
+
+            adjusted_production = round(((avg_actual / avg_target) * multiplier * 100), 2) if avg_target else 0
+
+            final_score = round(
+                adjusted_production + avg_quality + avg_attendance + avg_skill + avg_new_initiatives,
+                2
+            )
+        else:
+            final_score = 0
+
+        avg_scores_list.append({
+            "employee_id": emp_id,
+            "employee_name": emp_name,
+            "avg_score": final_score
+        })
 
 
     return render_template('dmax_table.html', data_list=data_list,pagination=paginated_avg_scores,avg_scores_list=avg_scores_list, search_term=search_term,page_size=page_size,page_size_options=page_size_options,chart_data=chart_data,selected_month=selected_month,selected_designation=selected_designation,selected_project=selected_project,projects=projects,designations=designations,labels=labels, scores=scores,project_names=project_names)
@@ -3085,7 +3128,8 @@ def set_targets(emp_id):
             target_data["status"] = "waiting for approval"
             new_target_entry = Target_columns(**target_data)
             db.session.add(new_target_entry)            
-        db.session.commit()        
+        db.session.commit()     
+        return redirect(request.url)   
     return render_template("set_targets.html", employee=employee,values=values,current_year=current_year,fields=fields,role=role,monthsDict=monthsDict,years=years)
 
 @app.route("/project_targets", methods=["GET", "POST"])
@@ -3148,6 +3192,9 @@ def approve_targets(emp_id, role):
                       month_order.desc(),  # Order by month (latest month first)
                       ).first() # Order by creation date (latest first) 
         if target_entry:
+            for field, value in request.form.items():
+                if hasattr(target_entry, field):
+                    setattr(target_entry, field, value)
             # Mark the found target entry as approved
             target_entry.status = 'approved'
             db.session.commit()
