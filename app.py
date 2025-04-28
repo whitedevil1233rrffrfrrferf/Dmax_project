@@ -225,7 +225,7 @@ def role_required(*roles):
         def decorated_function(*args, **kwargs):
             if not current_user.is_authenticated:
                 return redirect(url_for('sign'))
-
+                
             if current_user.role not in roles:
                 flash("Please sign in to access the page.", "danger")
                 return redirect(url_for('sign'))  # Redirect unauthorized users
@@ -379,6 +379,7 @@ class Employee(db.Model, UserMixin):
 
 class Employee_information(db.Model):
     __bind_key__="emp_info"
+    __tablename__ = "employee_information"
     id = db.Column(db.Integer, primary_key=True)
     emp_name = db.Column(db.String(100),nullable=False)
     emp_id = db.Column(db.String(100),nullable=False)
@@ -421,6 +422,15 @@ class Employee_information(db.Model):
     reporting_manager=db.Column(db.String(100))
     actual_reporting_manager=db.Column(db.String(100))
     target_month=db.Column(db.String(100))
+
+class EmployeeManagerMap(db.Model):
+    __bind_key__ = "emp_info"
+    __tablename__ = "employee_manager_map"
+
+    id = db.Column(db.Integer, primary_key=True)
+    emp_id = db.Column(db.String, db.ForeignKey('employee_information.emp_id'))
+    manager_email = db.Column(db.String)
+    is_current = db.Column(db.Boolean, default=True)    
     
 class Target_columns(db.Model):
     __bind_key__="target_columns"
@@ -769,9 +779,9 @@ def home():
             # results['BQ'] = 0
             # results['BR'] =int(((form_data['new_init'] * 10 / 100 / 100) * 100)*100)  
             # results['BR'] = 0   
-            results['BS'] = sum(
-                                results[key] for key in [ 'BN', 'BO', 'BP', 'BQ', 'BR']
-                            )
+        results['BS'] = sum(
+                            results[key] for key in [ 'BN', 'BO', 'BP', 'BQ', 'BR']
+                            )       
 
         if results['BP']==0:
             results['BL']=request.form.get('target')
@@ -886,7 +896,7 @@ def sign():
                 return redirect(url_for('sign'))  
 
         if employee and employee.password == password:
-            session.clear()
+            
             login_user(employee)
 
             session['username'] = username
@@ -945,8 +955,9 @@ def google_sign_in():
                 flash("You do not have access please contact admin", "danger")
                     
                 return redirect(url_for('sign')) 
-               
+        login_user(employee)       
         session['email'] = user_email
+        
         if employee.role == 'crewmate':
             return redirect(url_for('view_dscore'))
         if employee.role=='super_admin' or employee.role=="admin":
@@ -1110,7 +1121,7 @@ def edit_employee(employee_id):
     projects=['Akyrian','Auxo','Avanti','Bench','Fora Travels','Indihood','IPS','IQHive','LevelBlue','Web Development','Opus Clip','Training']
     designations=['Intern','Jr.QA Engineer','QA Engineer','Sr.QA Engineer','QA Lead']
     if request.method == 'POST':
-        print
+        
         # Update the employee data with form values
         employee.emp_name = request.form['emp_name']
         employee.emp_id=request.form['emp_id']
@@ -1200,7 +1211,20 @@ def employee_upload():
                     )
 
                     if existing_employee_data:
-                        flash(f"Employee with email '{emp_email}', ID '{emp_id}', or name '{emp_name}' already exists. Skipping entry.", "danger")
+                        flash(f"Employee with email '{emp_email}', ID '{emp_id}', or name '{emp_name}' already exists. Logging to manager map.", "warning")
+                        already_logged = EmployeeManagerMap.query.filter_by(
+                            emp_id=existing_employee_data.emp_id,
+                            manager_email=actual_reporting_manager,
+                            is_current=True
+                        ).first()
+                        if not already_logged:
+                            # ✅ Create new mapping in manager map
+                            manager_map = EmployeeManagerMap(
+                                emp_id=existing_employee_data.emp_id,
+                                manager_email=actual_reporting_manager,
+                                is_current=True
+                            )
+                            db.session.add(manager_map)
                         continue         
                     # existing_employee_data = (
                     #     db.session.query(Employee_information)
@@ -1345,11 +1369,7 @@ def dmax_table():
             session['page_size'] = int(selected_page_size)
         # Redirect to page 1 with the current search term to avoid form resubmission
         return redirect(url_for('dmax_table', page=1, search_term=request.args.get('search_term', '')))
-    # designation_counts = (
-    #     db.session.query(Employee_information.emp_designation, func.count(Employee_information.emp_designation))
-    #     .group_by(Employee_information.emp_designation)
-    #     .all()
-    # )
+    
     
     
     page_size = session.get('page_size', default_page_size)
@@ -1663,7 +1683,10 @@ def view_dscore():
         "approved": "Approved",
         "waiting for approval": "In Process"
     }
-    
+    total_inv_defs = 0
+    total_spel_errors = 0
+    total_client_esc = 0
+    total_tst_cases_missing = 0
     project_names = []
     years = [current_year - i for i in range(11)]
     # ALLOWED_COLUMNS = [
@@ -1704,10 +1727,17 @@ def view_dscore():
             current_month_formatted = datetime.now().strftime("%B")  # Fallback if invalid input
         current_year_formatted = str(selected_year)    
         
-        if role =="manager":    
+        if role =="manager": 
+            mapped_emp_ids = db.session.query(EmployeeManagerMap.emp_id).filter(
+                func.lower(EmployeeManagerMap.manager_email) == user_name.lower()
+            ).all()
+            has_client_escalation = False
+            # Flatten to a list of IDs
+            mapped_emp_ids = [emp_id for (emp_id,) in mapped_emp_ids]   
             employees_under_manager = Employee_information.query.filter( or_(
                 func.lower(Employee_information.reporting_manager) == user_name,
-                func.lower(Employee_information.actual_reporting_manager) == user_name
+                func.lower(Employee_information.actual_reporting_manager) == user_name,
+                Employee_information.emp_id.in_(mapped_emp_ids)
             )).all()
             is_actual_manager = False
             filtered_employees=[]
@@ -1719,6 +1749,33 @@ def view_dscore():
                     selected_date,
                     selected_year
                 )
+                for entry in matched_employees.all():
+                    total_inv_defs += entry.inv_defs or 0
+                    total_spel_errors += entry.spel_errors or 0
+                    total_client_esc += entry.client_esc or 0
+                    total_tst_cases_missing += entry.tst_cases_missing or 0
+                    if entry.client_esc and entry.client_esc > 0:
+                        has_client_escalation = True
+
+                # Final quality calculation
+                final_quality = 98 - (total_inv_defs + total_spel_errors + total_client_esc + total_tst_cases_missing)
+                print("initial_quality",final_quality)  
+                all_matched = matched_employees.all()
+                if all_matched:
+                    corrected_designation = corrections.get(all_matched[0].designation, all_matched[0].designation)
+                else:
+                    # No matched employees, handle safely
+                    corrected_designation = None
+                if corrected_designation == "Intern":
+                    prod_multiplier=50
+                else:
+                    prod_multiplier = 40    
+                if has_client_escalation:
+                    final_quality = 0  
+                else:        
+                    final_quality = final_quality *prod_multiplier / 100     
+                print(final_quality)
+                
                 emp_id = db.session.query(Employee_information.emp_id).filter(
                     Employee_information.emp_email == emp.emp_email
                 ).first()
@@ -1779,10 +1836,7 @@ def view_dscore():
                         adjusted_production = round(
                             ((averages["avg_actual"] / averages["avg_target"]) * prod_multiplier * 100), 2
                         ) if averages["avg_target"] != 0 else 0
-                        print("average_actual",averages["avg_actual"])
-                        print("average_target",averages["avg_target"])
-                        print("adjusted_production",adjusted_production)
-                        print("Designation:", emp_designation, "Multiplier:", prod_multiplier)
+                        
                         filtered_employees.append(
                         {  "id": emp.id,
                             "employee_id": emp.emp_id,
@@ -1790,7 +1844,7 @@ def view_dscore():
                             "target": averages["avg_target"],  # ✅ Correct way to access dictionary values
                             "actual": averages["avg_actual"],
                             "production": adjusted_production,
-                            "quality": averages["avg_quality"],
+                            "quality": final_quality,
                             "attendance": averages["avg_attendance"],
                             "skill": averages["avg_skill"],
                             "new_initiatives": averages["avg_new_initiatives"],
@@ -1819,6 +1873,33 @@ def view_dscore():
                 selected_date,
                 selected_year
             )
+            has_client_escalation=False
+            for entry in matched_employees.all():
+                    total_inv_defs += entry.inv_defs or 0
+                    total_spel_errors += entry.spel_errors or 0
+                    total_client_esc += entry.client_esc or 0
+                    total_tst_cases_missing += entry.tst_cases_missing or 0
+                    if entry.client_esc and entry.client_esc > 0:
+                        has_client_escalation = True
+
+                # Final quality calculation
+            final_quality = 98 - (total_inv_defs + total_spel_errors + total_client_esc + total_tst_cases_missing)
+            print("initial_quality",final_quality)  
+            all_matched = matched_employees.all()
+            if all_matched:
+                corrected_designation = corrections.get(all_matched[0].designation, all_matched[0].designation)
+            else:
+                # No matched employees, handle safely
+                corrected_designation = None
+            if corrected_designation == "Intern":
+                prod_multiplier=50
+            else:
+                prod_multiplier = 40    
+            if has_client_escalation:
+                final_quality = 0  
+            else:        
+                final_quality = final_quality *prod_multiplier / 100     
+                print(final_quality)
             filtered_employees=[]   
             if matched_employees.count() > 0:
                 first_entry = matched_employees.first()
@@ -1864,7 +1945,7 @@ def view_dscore():
                                 "target": averages["avg_target"],  # ✅ Correct way to access dictionary values
                                 "actual": averages["avg_actual"],
                                 "production": adjusted_production,
-                                "quality": averages["avg_quality"],
+                                "quality": final_quality,
                                 "attendance": averages["avg_attendance"],
                                 "skill": averages["avg_skill"],
                                 "new_initiatives": averages["avg_new_initiatives"],
@@ -1885,11 +1966,17 @@ def view_dscore():
             return render_template("view_dscore.html",employees=filtered_employees,role=role,search_query=search_query, selected_month=selected_month, selected_date=selected_date,selected_year=int(selected_year),years=years)                
                 
         if role == "admin" or role == "super_admin":
+            mapped_emp_ids = db.session.query(EmployeeManagerMap.emp_id).filter(
+                func.lower(EmployeeManagerMap.manager_email) == user_name.lower()
+            ).all()
             
+            # Flatten to a list of IDs
+            mapped_emp_ids = [emp_id for (emp_id,) in mapped_emp_ids]
             # employees_under_manager = Employee_information.query.all()  # Get all employees under the manager
             employees_under_manager = Employee_information.query.filter( or_(
                 func.lower(Employee_information.reporting_manager) == user_name,
-                func.lower(Employee_information.actual_reporting_manager) == user_name
+                func.lower(Employee_information.actual_reporting_manager) == user_name,
+                Employee_information.emp_id.in_(mapped_emp_ids)
             )).all()
             projects_under_manager = ProjectTargets.query.with_entities(ProjectTargets.Project).filter(
                 func.lower(ProjectTargets.ApprovalManager) == user_name.lower()
@@ -1907,7 +1994,7 @@ def view_dscore():
                 # Merge both lists without duplicates
                 employees_under_manager = list(set(employees_under_manager + additional_employees))
             filtered_employees = []
-
+            has_client_escalation= False
             for emp in employees_under_manager:
                 # Filter Dform by employee email and other search parameters
                 matched_employees = get_first_filtered_employees(
@@ -1917,6 +2004,32 @@ def view_dscore():
                     selected_date,
                     selected_year
                 )
+                for entry in matched_employees.all():
+                    total_inv_defs += entry.inv_defs or 0
+                    total_spel_errors += entry.spel_errors or 0
+                    total_client_esc += entry.client_esc or 0
+                    total_tst_cases_missing += entry.tst_cases_missing or 0
+                    if entry.client_esc and entry.client_esc > 0:
+                        has_client_escalation = True
+
+                # Final quality calculation
+                final_quality = 98 - (total_inv_defs + total_spel_errors + total_client_esc + total_tst_cases_missing)
+                print("initial_quality",final_quality)  
+                all_matched = matched_employees.all()
+                if all_matched:
+                    corrected_designation = corrections.get(all_matched[0].designation, all_matched[0].designation)
+                else:
+                    # No matched employees, handle safely
+                    corrected_designation = None
+                if corrected_designation == "Intern":
+                    prod_multiplier=50
+                else:
+                    prod_multiplier = 40    
+                if has_client_escalation:
+                    final_quality = 0  
+                else:        
+                    final_quality = final_quality *prod_multiplier / 100     
+                print(final_quality)
                 emp_id = db.session.query(Employee_information.emp_id).filter(
                     Employee_information.emp_email == emp.emp_email
                 ).first()
@@ -1973,7 +2086,7 @@ def view_dscore():
                         
                         emp_designation = corrections.get(matched_employees[0].designation,matched_employees[0].designation) # Get the designation
                         prod_multiplier = production_multipliers.get(emp_designation, 1.0)
-                        print("Designation:", emp_designation, "Multiplier:", prod_multiplier)
+                        
                         adjusted_production = round(
                             ((averages["avg_actual"] / averages["avg_target"]) * prod_multiplier * 100), 2
                         ) if averages["avg_target"] != 0 else 0
@@ -1988,7 +2101,7 @@ def view_dscore():
                                 "target": averages["avg_target"],  # ✅ Correct way to access dictionary values
                                 "actual": averages["avg_actual"],
                                 "production": adjusted_production,
-                                "quality": averages["avg_quality"],
+                                "quality": final_quality,
                                 "attendance": averages["avg_attendance"],
                                 "skill": averages["avg_skill"],
                                 "new_initiatives": averages["avg_new_initiatives"],

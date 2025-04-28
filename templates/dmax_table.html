@@ -118,9 +118,9 @@
                     {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
                         {% if page_num %}
                             {% if pagination.page == page_num %}
-                                <a class="btn btn-primary mb-4" href="{{ url_for('dmax_table', page=page_num, page_size=page_size, search_term=search_term) }}">{{ page_num }}</a>
+                                <a class="btn btn-primary mb-4" href="{{ url_for('dmax_table', page=page_num, page_size=page_size, search_term=search_term,month=selected_month) }}">{{ page_num }}</a>
                             {% else %}
-                                <a class="btn btn-outline-secondary mb-4" href="{{ url_for('dmax_table', page=page_num, page_size=page_size, search_term=search_term) }}">{{ page_num }}</a>
+                                <a class="btn btn-outline-secondary mb-4" href="{{ url_for('dmax_table', page=page_num, page_size=page_size, search_term=search_term,month=selected_month) }}">{{ page_num }}</a>
                             {% endif %}
                         {% else %}
                             ...
