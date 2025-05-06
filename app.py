@@ -1,4 +1,6 @@
 from io import BytesIO
+import tempfile
+import pandas as pd
 from flask import Flask,render_template,request,redirect, send_file,url_for,jsonify,flash,session
 from flask_login import UserMixin,LoginManager, login_user, logout_user, login_required, current_user
 from dotenv import load_dotenv
@@ -15,6 +17,7 @@ from sqlalchemy import case, extract, func, or_
 import requests
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
+import tempfile
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 app=Flask(__name__)
 application=app
@@ -170,44 +173,50 @@ def calculate_attendance(designation, attendance_input):
     return attendance*10
 
 def generate_excel_from_template(employees):
-    directory = os.path.abspath("static/files")
-    filename = "DMAX-sample.xlsx"
-    sample_file_path = os.path.join(directory, filename)
-    wb = load_workbook(sample_file_path)
-    ws = wb.active  # Get the active sheet
-    
-    start_row = 4  
-
-    # List of database columns corresponding to template headers
+    # Define the list of columns you want to include
     ALLOWED_COLUMNS = [
-            "employee_name","employee_id","employee_email","today_date","project","designation",
-            "test_case_creation_target","test_case_creation_actual",
-            "test_case_updation_target", "test_case_updation_actual",
-            "test_case_execution_target", "test_case_execution_actual", 
-            "defects_found_target", "defects_found_actual","defects_verification_target", "defects_verification_actual", 
-            "test_scripts_creation_target", "test_scripts_creation_actual","test_scripts_updation_target", "test_scripts_updation_actual",
-            "test_scripts_execution_target","test_scripts_execution_actual","project_doc_target",
-            "project_doc_actual", "internal_Review_target", "internal_Review_actual", "regression_cycle_target",
-            "regression_cycle_actual", "req_anal_target", "req_anal_actual", "end_cases_exec_target", "end_cases_exec_actual",
-            "site_Scrub_target", "site_Scrub_actual", 
-            "task_coverage_score_target", "task_coverage_score_actual",
-            "assessment_score_target", "assessment_score_actual", "assessment_re_score_target",
-            "assessment_re_score_actual", "cert_score_target", "cert_score_actual", "cert_re_score_target","cert_re_score_actual",
-            "new_features_imp_target", "new_features_imp_actual", "defects_fixed_target",
-            "defects_fixed_actual", "enhancements_target", "enhancements_actual", "fig_desgns_target",
-            "fig_desgns_actual", "doc_update_target", "doc_update_actual", "research_target", "research_actual",
-            "inv_defs", "spel_errors", "client_esc", "tst_cases_missing", "attendance", "skill", "new_initiatives", "target", "actual", "production",
-            "quality", "attendance", "skill", "new_initiatives", "Dmax_score"
+        "employee_name", "employee_id", "employee_email", "today_date", "project", "designation",
+        "test_case_creation_target", "test_case_creation_actual", "test_case_updation_target", 
+        "test_case_updation_actual", "test_case_execution_target", "test_case_execution_actual", 
+        "defects_found_target", "defects_found_actual", "defects_verification_target", "defects_verification_actual", 
+        "test_scripts_creation_target", "test_scripts_creation_actual", "test_scripts_updation_target", 
+        "test_scripts_updation_actual", "test_scripts_execution_target", "test_scripts_execution_actual", 
+        "project_doc_target", "project_doc_actual", "internal_Review_target", "internal_Review_actual", 
+        "regression_cycle_target", "regression_cycle_actual", "req_anal_target", "req_anal_actual", 
+        "end_cases_exec_target", "end_cases_exec_actual", "site_Scrub_target", "site_Scrub_actual", 
+        "task_coverage_score_target", "task_coverage_score_actual", "assessment_score_target", 
+        "assessment_score_actual", "assessment_re_score_target", "assessment_re_score_actual", 
+        "cert_score_target", "cert_score_actual", "cert_re_score_target", "cert_re_score_actual",
+        "new_features_imp_target", "new_features_imp_actual", "defects_fixed_target", "defects_fixed_actual", 
+        "enhancements_target", "enhancements_actual", "fig_desgns_target", "fig_desgns_actual", "doc_update_target", 
+        "doc_update_actual", "research_target", "research_actual", "inv_defs", "spel_errors", "client_esc", 
+        "tst_cases_missing", "attendance", "skill", "new_initiatives", "target", "actual", "production", 
+        "quality", "Dmax_score"
     ]
-    for row_num, emp in enumerate(employees, start=start_row):
-        for col_num, column_name in enumerate(ALLOWED_COLUMNS, start=1):
-            ws.cell(row=row_num, column=col_num, value=getattr(emp, column_name, ''))
+    
+    # Convert the employee data to a pandas DataFrame
+    data = []
+    for emp in employees:
+        row = {col: getattr(emp, col, '') for col in ALLOWED_COLUMNS}
+        data.append(row)
+    
+    df = pd.DataFrame(data)
 
-    # Save the modified file to memory (without changing the original)
+    # Save to an in-memory Excel file
     output = BytesIO()
-    wb.save(output)
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Employees')
+
+    # Move the pointer to the start of the file before sending
     output.seek(0)
-    return send_file(output, download_name="filtered_employees.xlsx", as_attachment=True, mimetype="application/octet-stream")
+    
+    # Return the Excel file as a downloadable attachment
+    return send_file(
+        output,
+        download_name="filtered_employees.xlsx",
+        as_attachment=True,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 def has_previous_month_entry(employee_id, month):
     """ Check if the employee has at least one entry for the previous month. """
@@ -687,17 +696,41 @@ def home():
                 flash("You can only submit the form for the current month as this is your first entry.", "error")
                 return redirect(request.referrer)
         else:
-            if month != datetime.today().month or year != datetime.today().year:
-                if month > 1:
+            if month > 1:
+                previous_month = month-1 
+                previous_year = year
+                previous_form = db.session.query(Dform).filter(
+                    Dform.employee_id == form_data['employee_id'],
+                    Dform.today_date.startswith(f"{previous_year}-{str(previous_month).zfill(2)}")  # format: YYYY-MM
+                ).first()
+                
+                if previous_form:
                     previous_approval = db.session.query(DmaxApprovals).filter_by(
                         employee_email=form_data['employee_id'],
                         approved_month=previous_month,
                         approved_year=previous_year,
                         status="Approved"
                     ).first()
+
                     if not previous_approval:
-                        flash(f"Please get {monthsDict[previous_month_str]}'s data approved before proceeding.", "error")
+                        flash(f"Please get {monthsDict[str(previous_month).zfill(2)]}'s data approved before proceeding.", "error")
                         return redirect(request.referrer)
+            # if month != datetime.today().month or year != datetime.today().year:
+            #     first_entry= db.session.query(DmaxApprovals).filter_by(
+            #             employee_email=form_data['employee_id'],
+            #             status="Approved"
+            #         ).first()
+            #     if month > 1:
+
+            #         previous_approval = db.session.query(DmaxApprovals).filter_by(
+            #             employee_email=form_data['employee_id'],
+            #             approved_month=previous_month,
+            #             approved_year=previous_year,
+            #             status="Approved"
+            #         ).first()
+            #         if not previous_approval:
+            #             flash(f"Please get {monthsDict[previous_month_str]}'s data approved before proceeding.", "error")
+            #             return redirect(request.referrer)
         # if not first_entry and not has_previous_month_entry(employee_id,month):
         #     flash(f"Please complete current month before proceeding to {monthsDict[month_str]}", "error")
         #     return redirect(request.referrer)
@@ -1683,10 +1716,7 @@ def view_dscore():
         "approved": "Approved",
         "waiting for approval": "In Process"
     }
-    total_inv_defs = 0
-    total_spel_errors = 0
-    total_client_esc = 0
-    total_tst_cases_missing = 0
+    
     project_names = []
     years = [current_year - i for i in range(11)]
     # ALLOWED_COLUMNS = [
@@ -1742,6 +1772,10 @@ def view_dscore():
             is_actual_manager = False
             filtered_employees=[]
             for emp in employees_under_manager:
+                total_inv_defs = 0
+                total_spel_errors = 0
+                total_client_esc = 0
+                total_tst_cases_missing = 0
                 matched_employees = get_first_filtered_employees(
                     Dform.query.filter_by(employee_email=emp.emp_email),
                     search_query,
@@ -1759,7 +1793,7 @@ def view_dscore():
 
                 # Final quality calculation
                 final_quality = 98 - (total_inv_defs + total_spel_errors + total_client_esc + total_tst_cases_missing)
-                print("initial_quality",final_quality)  
+                initial_quality=final_quality  
                 all_matched = matched_employees.all()
                 if all_matched:
                     corrected_designation = corrections.get(all_matched[0].designation, all_matched[0].designation)
@@ -1845,23 +1879,25 @@ def view_dscore():
                             "actual": averages["avg_actual"],
                             "production": adjusted_production,
                             "quality": final_quality,
+                            "initial_quality": initial_quality,
                             "attendance": averages["avg_attendance"],
                             "skill": averages["avg_skill"],
                             "new_initiatives": averages["avg_new_initiatives"],
-                            "Dmax_score": (
-                                        adjusted_production +
-                                        averages["avg_quality"] +
-                                        averages["avg_attendance"] +
-                                        averages["avg_skill"] +
-                                        averages["avg_new_initiatives"]
-                                    ),
+                            "Dmax_score": round(
+                                adjusted_production +
+                                final_quality +
+                                averages["avg_attendance"] +
+                                averages["avg_skill"] +
+                                averages["avg_new_initiatives"],
+                                2
+                            ),
                             "project":emp.emp_project,
                             "project_status":project_status,
                             "approval_status":approval_status,
                             "is_actual_manager":is_actual_manager
                         }
                         )
-                        
+            session['filtered_employees'] = json.dumps(filtered_employees)
             return render_template("view_dscore.html",employees=filtered_employees,role=role,search_query=search_query, selected_month=selected_month, selected_date=selected_date,selected_year=int(selected_year),years=years,is_actual_manager=is_actual_manager)        
 
         if role=="crewmate":
@@ -1949,13 +1985,14 @@ def view_dscore():
                                 "attendance": averages["avg_attendance"],
                                 "skill": averages["avg_skill"],
                                 "new_initiatives": averages["avg_new_initiatives"],
-                                "Dmax_score": (
-                                        adjusted_production +
-                                        averages["avg_quality"] +
-                                        averages["avg_attendance"] +
-                                        averages["avg_skill"] +
-                                        averages["avg_new_initiatives"]
-                                    ),
+                                "Dmax_score": round(
+                                    adjusted_production +
+                                    final_quality +
+                                    averages["avg_attendance"] +
+                                    averages["avg_skill"] +
+                                    averages["avg_new_initiatives"],
+                                    2
+                                ),
                                 "project":first_entry.project,
                                 "project_status": project_status,
                                 "approval_status":approval_status
@@ -1996,6 +2033,10 @@ def view_dscore():
             filtered_employees = []
             has_client_escalation= False
             for emp in employees_under_manager:
+                total_inv_defs = 0
+                total_spel_errors = 0
+                total_client_esc = 0
+                total_tst_cases_missing = 0
                 # Filter Dform by employee email and other search parameters
                 matched_employees = get_first_filtered_employees(
                     Dform.query.filter_by(employee_email=emp.emp_email),  # Filter by the employee's email
@@ -2105,13 +2146,14 @@ def view_dscore():
                                 "attendance": averages["avg_attendance"],
                                 "skill": averages["avg_skill"],
                                 "new_initiatives": averages["avg_new_initiatives"],
-                                "Dmax_score": (
-                                        adjusted_production +
-                                        averages["avg_quality"] +
-                                        averages["avg_attendance"] +
-                                        averages["avg_skill"] +
-                                        averages["avg_new_initiatives"]
-                                    ),
+                                "Dmax_score": round(
+                                    adjusted_production +
+                                    final_quality +
+                                    averages["avg_attendance"] +
+                                    averages["avg_skill"] +
+                                    averages["avg_new_initiatives"],
+                                    2
+                                ),
                                 "project":emp.emp_project,
                                 "project_status": project_status,
                                 "approval_status": approval_status,
@@ -3574,10 +3616,51 @@ def check_operational_excellence():
 
     return jsonify({"confirm_needed": False}) 
 
+
+
+
 @app.route("/test12")
 @login_required
 def test():
     return "hello"
+
+
+@app.route('/download_employee_report', methods=['POST'])
+def download_employee_report():
+    # Load your Excel template from static/files
+    template_path = os.path.join('static', 'files', 'test.xlsx')  # Ensure the filename matches
+
+    # Load workbook
+    wb = load_workbook(template_path)
+    ws = wb.active
+
+    # Load employee data from session
+    filtered_employees = json.loads(session.get('filtered_employees', '[]'))
+
+    # Start writing from row 3 (assuming headers are in row 1 and 2)
+    start_row = 3
+    for index, emp in enumerate(filtered_employees, start=start_row):
+        ws.cell(row=index, column=1, value=emp["id"])
+        ws.cell(row=index, column=2, value=emp["employee_name"])
+        ws.cell(row=index, column=3, value=emp["target"])
+        ws.cell(row=index, column=4, value=emp["actual"])
+        ws.cell(row=index, column=5, value="98")
+        ws.cell(row=index, column=6, value=emp["initial_quality"])
+        ws.cell(row=index, column=7, value=emp["skill"]) 
+        ws.cell(row=index, column=8, value=emp["Dmax_score"])
+        ws.cell(row=index, column=9, value=emp["project"])
+        ws.cell(row=index, column=10, value=emp["production"])
+        ws.cell(row=index, column=11, value=emp["quality"])
+        ws.cell(row=index, column=12, value=emp["attendance"])
+        ws.cell(row=index, column=13, value=emp["new_initiatives"])
+        ws.cell(row=index, column=14, value="Yes" if emp["is_actual_manager"] else "No")
+
+    # Save to a temporary file
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+    wb.save(tmp.name)
+
+    # Return as a download
+    return send_file(tmp.name, as_attachment=True, download_name="employee_report.xlsx")
 
 with app.app_context():
         
