@@ -36,6 +36,7 @@
                         {% endfor %}
                     </select>
                 </div>
+                
                 <div class="inner_filter_div">
                   <label for="year">Year</label>
                   <select id="year" onchange="handleFilters()" style="width:5rem;">
@@ -117,30 +118,67 @@
                             </thead>
                             <tbody>
                                 {% if employee|length > 0 %}
-                                {% for emp in employee %}
-                                    <tr >
-                                        {% if approved != "Yes"%}
-                                            <td class="table_row">
-                                                <input type="checkbox" class="rowCheckbox" value="{{ emp.id }}">
-                                            </td>
-                                        {% endif %}
-                                        {% for column in ALLOWED_COLUMNS %}
-                                            <td class="table_row">{{ emp | get_attr(column) }}</td>
+                                    {% if project == "Indihood" %}
+                                        {% for emp, quality in employee %}
+                                            <tr>
+                                                {% if approved != "Yes" %}
+                                                    <td class="table_row">
+                                                        <input type="checkbox" class="rowCheckbox" value="{{ emp.id }}">
+                                                    </td>
+                                                {% endif %}
+                            
+                                                {% for column in ALLOWED_COLUMNS %}
+                                                    <td class="table_row">{{ emp | get_attr(column) }}</td>
+                                                    {% if column == "site_Scrub_actual" %}
+                                                        <!-- Indihood-specific fields inserted after site_Scrub_actual -->
+                                                        <td class="table_row">{{ quality.client_esc_value }}</td>
+                                                        <td class="table_row">{{ quality.not_writing_testcase_value }}</td>
+                                                        <td class="table_row">{{ quality.invalid_defects_value }}</td>
+                                                        <td class="table_row">{{ quality.client_req_value }}</td>
+                                                        <td class="table_row">{{ quality.issue_rej_value }}</td>
+                                                        <td class="table_row">{{ quality.time_man_value }}</td>
+                                                        <td class="table_row">{{ quality.interaction_value }}</td>
+                                                        <td class="table_row">{{ quality.testcase_condn_value }}</td>
+                                                        <td class="table_row">{{ quality.gram_incor_value }}</td>
+                                                        <td class="table_row">{{ quality.pre_condn_value }}</td>
+                                                        <td class="table_row">{{ quality.communication_value }}</td>
+                                                        <td class="table_row">{{ quality.app_flow_value }}</td>
+                                                    {% endif %}
+                                                {% endfor %}
+                            
+                                                <!-- Indihood-specific fields -->
+                                                
+                                                
+                                                
+                                                
+                                            </tr>
                                         {% endfor %}
-                                    </tr>
-                                {% endfor %}
-                                <!-- {% for emp in employee %}
+                                    {% else %}
+                                        {% for emp in employee %}
+                                            <tr>
+                                                {% if approved != "Yes" %}
+                                                    <td class="table_row">
+                                                        <input type="checkbox" class="rowCheckbox" value="{{ emp.id }}">
+                                                    </td>
+                                                {% endif %}
+                            
+                                                {% for column in ALLOWED_COLUMNS %}
+                                                    <td class="table_row">{{ emp | get_attr(column) }}</td>
+                                                {% endfor %}
+                                            </tr>
+                                        {% endfor %}
+                                    {% endif %}
+                                {% else %}
                                     <tr>
-                                        
-                                        <td class="table_header">{{ emp.id}}</td>
-                                        
+                                        <td class="table_row text-center" colspan="{{ ALLOWED_COLUMNS|length + (2 if project == 'Indihood' else 0) + (1 if approved != 'Yes' else 0) }}">
+                                            No data available
+                                        </td>
                                     </tr>
-                                {% endfor %} -->
-
+                                {% endif %}
                             </tbody>
                         </table>
             
-            {% endif %}
+            
                    
             </div>
             

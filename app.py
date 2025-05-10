@@ -79,6 +79,13 @@ db = SQLAlchemy(app)
 
 ###############################################  Helper Functions ###############################################
 
+def normalize_role(role):
+    role_mapping = {
+        "ad_m": "manager",  # normalize dropdown value to "manager"
+        # Add more mappings if needed
+    }
+    return role_mapping.get(role, role)
+
 def get_logged_in_user_details():
     """
     Retrieves the logged-in user's name from the Employee table based on session data.
@@ -88,14 +95,16 @@ def get_logged_in_user_details():
         username = session['username']
         user = Employee.query.filter_by(emp_id=username).first()  # Match emp_id with the username
         if user:
-            return {"name": user.name, "role": user.role,"email":user.email}
+            normalized_role = normalize_role(user.role)
+            return {"name": user.name, "role": normalized_role,"email":user.email,"actual_role":user.role}
 
     # Check if the user logged in with Google Sign-In (using email)
     if 'email' in session:
         email = session['email']
         user = Employee.query.filter_by(email=email).first()  # Match email with the logged-in user's email
         if user:
-            return {"name": user.name, "role": user.role,"email":user.email}
+            normalized_role = normalize_role(user.role)
+            return {"name": user.name, "role": normalized_role,"email":user.email,"actual_role":user.role}
 
     # If no user is found, return None or an appropriate message
     return None
@@ -243,6 +252,7 @@ def role_required(*roles):
         return decorated_function
     return decorator
 
+
 ###############################################  Month dictionary ###############################################
 
 monthsDict = {
@@ -371,7 +381,29 @@ class Dform(db.Model):
     skill=db.Column(db.Integer)
     new_initiatives=db.Column(db.Integer)
     Dmax_score=db.Column(db.Integer)
-    
+
+## Project specific quality params table
+
+class IndihoodQuality(db.Model):    
+    __tablename__ = 'indihood_quality'
+    __bind_key__="dform"
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('login.employee_id'))
+    dform_id = db.Column(db.Integer, db.ForeignKey('login.id'))
+    today_date=db.Column(db.String(100),nullable=False)
+    client_esc_value=db.Column(db.Integer)
+    not_writing_testcase_value=db.Column(db.Integer)
+    invalid_defects_value=db.Column(db.Integer)
+    client_req_value=db.Column(db.Integer)
+    issue_rej_value=db.Column(db.Integer)
+    time_man_value=db.Column(db.Integer)
+    interaction_value=db.Column(db.Integer)
+    test_condn_value=db.Column(db.Integer)
+    gram_incor_value=db.Column(db.Integer)
+    pre_condn_value=db.Column(db.Integer)
+    communication_value=db.Column(db.Integer)
+    app_flow_value=db.Column(db.Integer)
+
 
 # Employee Model
 class Employee(db.Model, UserMixin):
@@ -530,14 +562,14 @@ def custom_global_variable():
         # Query the user role from the database
         user = Employee.query.filter_by(email=user_email).first()
         if user:
-            role = user.role  # Assuming `role` is a column in your User model
+            role =normalize_role(user.role)  # Assuming `role` is a column in your User model
             print("role",role)
 
     if 'username' in session :
         username = session['username']
         user = Employee.query.filter_by(emp_id=username).first()
         if user:
-            role=user.role
+            role=normalize_role(user.role)
             print("role",user)         
     # Return the role to all templates as a global variable
     return {'user_role': role}
@@ -553,7 +585,7 @@ def get_attr(obj, attr):
 
 @app.route('/form',methods=["GET","POST"])
 @login_required
-@role_required("manager")
+@role_required("manager","ad_m")
 def home():
     if 'username' in session :
         username = session['username']
@@ -645,6 +677,23 @@ def home():
             "new_init":'BK',    
         }
         form_data = {}
+        Indihood_weights = {
+            'client_esc_value': 0,
+            'not_writing_testcase_value': 10,
+            'invalid_defects_value': 2,
+            'client_req_value': 4,
+            'issue_rej_value': 0.5,
+            'time_man_value': 3,
+            'interaction_value': 3,
+            'test_condn_value': 1,
+            'gram_incor_value': 0.10,
+            'pre_condn_value': 0.2,
+            'communication_value': 3,
+            'app_flow_value': 3
+        }
+        def get_weighted_value(field):
+            value = request.form.get(field)
+            return round((int(value) * Indihood_weights[field]) / 100, 2) if value else 0
         row_values = []
         for field, column in field_to_column.items():
             value = request.form.get(field)
@@ -907,7 +956,29 @@ def home():
         
         # Add to DB and commit the session
         db.session.add(new_entry)
+        db.session.flush()
+        if form_data['project'] == 'Indihood':
+            indihood_entry = IndihoodQuality(
+                dform_id=new_entry.id,  # Link to that specific Dform row
+                today_date=new_entry.today_date,
+                employee_id=form_data['employee_id'],
+                client_esc_value=get_weighted_value('client_esc_value'),
+                not_writing_testcase_value=get_weighted_value('not_writing_testcase_value'),
+                invalid_defects_value=get_weighted_value('invalid_defects_value'),
+                client_req_value=get_weighted_value('client_req_value'),
+                issue_rej_value=get_weighted_value('issue_rej_value'),
+                time_man_value=get_weighted_value('time_man_value'),
+                interaction_value=get_weighted_value('interaction_value'),
+                test_condn_value=get_weighted_value('test_condn_value'),
+                gram_incor_value=get_weighted_value('gram_incor_value'),
+                pre_condn_value=get_weighted_value('pre_condn_value'),
+                communication_value=get_weighted_value('communication_value'),
+                app_flow_value=get_weighted_value('app_flow_value')
+            )
+            db.session.add(indihood_entry)
+
         db.session.commit()
+
         flash("Form submitted sucessfully!","success")
         
         return redirect(url_for('home'))
@@ -939,6 +1010,8 @@ def sign():
             if role=="admin":
                 return redirect(url_for('dmax_table'))
             if role=="manager":
+                return redirect(url_for('home'))
+            if role=="ad_m":
                 return redirect(url_for('home'))
             if role=="crewmate":
                 return redirect(url_for('view_dscore'))
@@ -1741,6 +1814,7 @@ def view_dscore():
     if user_name:
         
         role = user_name['role']
+        actual_role=user_name['actual_role']
         email=user_name['email']
         user_name=user_name['name'].lower()
         search_query = request.args.get('search', '').strip().lower()
@@ -1752,12 +1826,13 @@ def view_dscore():
             current_month_formatted = datetime.strptime(selected_month, "%m").strftime("%B")
         try:
             selected_month_int = int(selected_month)  # Convert string "2" to integer 2
-            current_month_formatted = datetime.strptime(str(selected_month_int), "%m").strftime("%B")  # "2" → "February"
+            current_month_formatted = datetime.strptime(str(selected_month_int), "%m").strftime("%B")  # "2" â†’ "February"
         except ValueError:
             current_month_formatted = datetime.now().strftime("%B")  # Fallback if invalid input
         current_year_formatted = str(selected_year)    
         
         if role =="manager": 
+            
             mapped_emp_ids = db.session.query(EmployeeManagerMap.emp_id).filter(
                 func.lower(EmployeeManagerMap.manager_email) == user_name.lower()
             ).all()
@@ -1769,13 +1844,33 @@ def view_dscore():
                 func.lower(Employee_information.actual_reporting_manager) == user_name,
                 Employee_information.emp_id.in_(mapped_emp_ids)
             )).all()
+            projects_under_manager = ProjectTargets.query.with_entities(ProjectTargets.Project).filter(
+                func.lower(ProjectTargets.Lead) == user_name.lower()
+            ).all()
+            print(projects_under_manager)    
+            # Extract project names from the query result
+            project_names = [proj[0] for proj in projects_under_manager]
             is_actual_manager = False
             filtered_employees=[]
             for emp in employees_under_manager:
-                total_inv_defs = 0
-                total_spel_errors = 0
-                total_client_esc = 0
-                total_tst_cases_missing = 0
+                if emp.emp_project == "Indihood":
+                    total_client_esc_value = 0
+                    total_not_writing_testcase_value = 0
+                    total_invalid_defects_value = 0
+                    total_client_req_value = 0
+                    total_issue_rej_value = 0
+                    total_time_man_value = 0
+                    total_interaction_value = 0
+                    total_test_condn_value = 0
+                    total_gram_incor_value = 0
+                    total_pre_condn_value = 0
+                    total_communication_value = 0
+                    total_app_flow_value = 0
+                else:    
+                    total_inv_defs = 0
+                    total_spel_errors = 0
+                    total_client_esc = 0
+                    total_tst_cases_missing = 0
                 matched_employees = get_first_filtered_employees(
                     Dform.query.filter_by(employee_email=emp.emp_email),
                     search_query,
@@ -1783,32 +1878,64 @@ def view_dscore():
                     selected_date,
                     selected_year
                 )
-                for entry in matched_employees.all():
-                    total_inv_defs += entry.inv_defs or 0
-                    total_spel_errors += entry.spel_errors or 0
-                    total_client_esc += entry.client_esc or 0
-                    total_tst_cases_missing += entry.tst_cases_missing or 0
-                    if entry.client_esc and entry.client_esc > 0:
-                        has_client_escalation = True
+                
+                if emp.emp_project == "Indihood":
+                    joined_matched_employees = matched_employees.join(
+                            IndihoodQuality, Dform.id == IndihoodQuality.dform_id
+                        ).add_entity(IndihoodQuality)
+                    for dform_entry, quality_entry in joined_matched_employees.all():
+                        total_client_esc_value += quality_entry.client_esc_value or 0
+                        total_not_writing_testcase_value += quality_entry.not_writing_testcase_value or 0
+                        total_invalid_defects_value += quality_entry.invalid_defects_value or 0
+                        total_client_req_value += quality_entry.client_req_value or 0
+                        total_issue_rej_value += quality_entry.issue_rej_value or 0
+                        total_time_man_value += quality_entry.time_man_value or 0
+                        total_interaction_value += quality_entry.interaction_value or 0
+                        total_test_condn_value += quality_entry.test_condn_value or 0
+                        total_gram_incor_value += quality_entry.gram_incor_value or 0
+                        total_pre_condn_value += quality_entry.pre_condn_value or 0
+                        total_communication_value += quality_entry.communication_value or 0
+                        total_app_flow_value += quality_entry.app_flow_value or 0
+                else:
+                    for entry in matched_employees.all():
+                        total_inv_defs += entry.inv_defs or 0
+                        total_spel_errors += entry.spel_errors or 0
+                        total_client_esc += entry.client_esc or 0
+                        total_tst_cases_missing += entry.tst_cases_missing or 0
+                        if entry.client_esc and entry.client_esc > 0:
+                            has_client_escalation = True        
 
                 # Final quality calculation
-                final_quality = 98 - (total_inv_defs + total_spel_errors + total_client_esc + total_tst_cases_missing)
-                initial_quality=final_quality  
-                all_matched = matched_employees.all()
-                if all_matched:
-                    corrected_designation = corrections.get(all_matched[0].designation, all_matched[0].designation)
+                if emp.emp_project == "Indihood":
+                    deductions = (
+                        total_client_esc_value + total_not_writing_testcase_value +
+                        total_invalid_defects_value + total_client_req_value +
+                        total_issue_rej_value + total_time_man_value +
+                        total_interaction_value + total_test_condn_value +
+                        total_gram_incor_value + total_pre_condn_value +
+                        total_communication_value + total_app_flow_value
+                    )
+                    print("deductions",deductions)
+                    final_quality = 98 - deductions
                 else:
-                    # No matched employees, handle safely
-                    corrected_designation = None
-                if corrected_designation == "Intern":
-                    prod_multiplier=50
-                else:
-                    prod_multiplier = 40    
-                if has_client_escalation:
-                    final_quality = 0  
-                else:        
-                    final_quality = final_quality *prod_multiplier / 100     
-                print(final_quality)
+                    final_quality = 98 - (total_inv_defs + total_spel_errors + total_client_esc + total_tst_cases_missing)
+                    initial_quality=final_quality  
+                    print("initial quality",initial_quality)
+                    all_matched = matched_employees.all()
+                    if all_matched:
+                        corrected_designation = corrections.get(all_matched[0].designation, all_matched[0].designation)
+                    else:
+                        # No matched employees, handle safely
+                        corrected_designation = None
+                    if corrected_designation == "Intern":
+                        prod_multiplier=50
+                    else:
+                        prod_multiplier = 40    
+                    if has_client_escalation:
+                        final_quality = 0  
+                    else:        
+                        final_quality = final_quality *prod_multiplier / 100     
+                    print("final quality",final_quality)
                 
                 emp_id = db.session.query(Employee_information.emp_id).filter(
                     Employee_information.emp_email == emp.emp_email
@@ -1840,7 +1967,7 @@ def view_dscore():
                 else:
                     approval_status = None
                 is_actual_manager = emp.reporting_manager.lower() == user_name.lower()
-                print(is_actual_manager,approval_status)
+                
                 # query = Dform.query.filter_by(employee_email=emp.emp_email)
                 # if search_query:
                 #     # Use = for exact match (case-sensitive)
@@ -1861,7 +1988,7 @@ def view_dscore():
                     #             for column in ALLOWED_COLUMNS         # Filter by allowed columns
                     #         }
                     #     )
-                    print("Designations:", [matched.designation for matched in matched_employees])
+                    
                     averages = get_averages_for_filtered_employees(matched_employees)
                     if averages:
                         emp_designation = corrections.get(matched_employees[0].designation, matched_employees[0].designation)
@@ -1875,11 +2002,10 @@ def view_dscore():
                         {  "id": emp.id,
                             "employee_id": emp.emp_id,
                             "employee_name": emp.emp_name,
-                            "target": averages["avg_target"],  # ✅ Correct way to access dictionary values
+                            "target": averages["avg_target"],  # âœ… Correct way to access dictionary values
                             "actual": averages["avg_actual"],
                             "production": adjusted_production,
                             "quality": final_quality,
-                            "initial_quality": initial_quality,
                             "attendance": averages["avg_attendance"],
                             "skill": averages["avg_skill"],
                             "new_initiatives": averages["avg_new_initiatives"],
@@ -1893,12 +2019,13 @@ def view_dscore():
                             ),
                             "project":emp.emp_project,
                             "project_status":project_status,
+                            "flag": emp.emp_project in project_names,
                             "approval_status":approval_status,
                             "is_actual_manager":is_actual_manager
                         }
                         )
             session['filtered_employees'] = json.dumps(filtered_employees)
-            return render_template("view_dscore.html",employees=filtered_employees,role=role,search_query=search_query, selected_month=selected_month, selected_date=selected_date,selected_year=int(selected_year),years=years,is_actual_manager=is_actual_manager)        
+            return render_template("view_dscore.html",employees=filtered_employees,role=role,search_query=search_query, selected_month=selected_month, selected_date=selected_date,selected_year=int(selected_year),years=years,is_actual_manager=is_actual_manager,actual_role=actual_role)        
 
         if role=="crewmate":
              
@@ -1953,7 +2080,7 @@ def view_dscore():
                         ).scalar()
                         project_status=status_mapping.get(project_status, "Targets not set")
                         approval_record = db.session.query(DmaxApprovals).filter_by(
-                            employee_email=first_entry.employee_id,  # ✅ Use employee_id instead of emp_id
+                            employee_email=first_entry.employee_id,  # âœ… Use employee_id instead of emp_id
                             approved_month=selected_month,
                             approved_year=selected_year
                         ).first()
@@ -1978,7 +2105,7 @@ def view_dscore():
                                 "id": first_entry.id if first_entry else None,  # No employee ID needed for crewmates, or use an appropriate field
                                 "employee_name": first_entry.employee_name,
                                 "employee_id": first_entry.employee_id,  # Assuming email identifies the crewmate
-                                "target": averages["avg_target"],  # ✅ Correct way to access dictionary values
+                                "target": averages["avg_target"],  # âœ… Correct way to access dictionary values
                                 "actual": averages["avg_actual"],
                                 "production": adjusted_production,
                                 "quality": final_quality,
@@ -2139,7 +2266,7 @@ def view_dscore():
                                 "id": emp.id,  # Employee ID
                                 "employee_name": emp.emp_name,  # Employee's name
                                 "employee_id": emp.emp_id,
-                                "target": averages["avg_target"],  # ✅ Correct way to access dictionary values
+                                "target": averages["avg_target"],  # âœ… Correct way to access dictionary values
                                 "actual": averages["avg_actual"],
                                 "production": adjusted_production,
                                 "quality": final_quality,
@@ -2194,7 +2321,7 @@ def delete_employee(id):
 
 @app.route('/operational_excellence/<string:emp_id>', methods=['GET', 'POST'])
 @login_required
-@role_required("admin", "super_admin")
+@role_required("admin", "super_admin","ad_m")
 def operational_excellence(emp_id):
     user_name = get_logged_in_user_details()
     role = user_name['role']
@@ -2316,7 +2443,14 @@ def full_table_view(id):
     ).first()
     approved = "Yes" if approval_exists else "No"
     filtered_query=get_first_filtered_employees(base_query, None, selected_month, selected_date, selected_year)
+    if project == "Indihood":
+        filtered_query = filtered_query.join(IndihoodQuality, Dform.id == IndihoodQuality.dform_id)
+        filtered_query = filtered_query.add_entity(IndihoodQuality)
     employee = filtered_query.all() 
+    if project == "Indihood":
+        for dform, quality in employee:
+            print("commn_value", quality.communication_value)
+            print("invalid_defects", quality.invalid_defects_value)
     if not employee:
         employee = []
         print("Employee List:", employee)  # Debugging
@@ -2692,10 +2826,53 @@ def full_table_view(id):
         # ,"Dmax_score",new_init
         # "quality", "attendance", "skill",  
     ]
+    if project == "Indihood":
+        
+        ALLOWED_COLUMNS = [
+            "employee_name", "today_date", "test_case_creation_target",
+            "test_case_creation_actual", "test_case_updation_target", "test_case_updation_actual",
+            "test_case_execution_target", "test_case_execution_actual", "defects_found_target",
+            "defects_found_actual","defects_verification_target", "defects_verification_actual", "test_scripts_creation_target", "test_scripts_creation_actual",
+            "test_scripts_execution_target","test_scripts_execution_actual","test_scripts_updation_target", "test_scripts_updation_actual",
+            "project_doc_target","project_doc_actual","internal_Review_target", "internal_Review_actual",
+            
+            "regression_cycle_target","regression_cycle_actual","req_anal_target", "req_anal_actual",
+            "end_cases_exec_target","end_cases_exec_actual","site_Scrub_target", "site_Scrub_actual",
+            "task_coverage_score_target", "task_coverage_score_actual","assessment_score_target", "assessment_score_actual",
+            "assessment_re_score_target","assessment_re_score_actual","cert_score_target", "cert_score_actual","cert_re_score_target","cert_re_score_actual",
+            "new_features_imp_target", "new_features_imp_actual","defects_fixed_target", "defects_fixed_actual",
+            "enhancements_target", "enhancements_actual", "fig_desgns_target", "fig_desgns_actual","doc_update_target", "doc_update_actual",
+            "research_target", "research_actual",
+            "att","skill","new_initiatives",
+            "target","actual","production","quality","attendance","skill","new_initiatives","Dmax_score"
+                
+            # #     
+            # ,"Dmax_score",new_init
+            # "quality", "attendance", "skill",  
+        ]
     core_columns = [
         "employee_name", "today_date","inv_defs",  "spel_errors",  "client_esc", "tst_cases_missing","att","skill","new_initiatives",
           "target","actual","production","quality","attendance","skill","new_initiatives","Dmax_score"
     ]
+    if project == "Indihood":
+        core_columns = [
+            "employee_name", "today_date","att","skill","new_initiatives",
+            "target","actual","production","quality","attendance","skill","new_initiatives","Dmax_score"
+        ]
+        TABLE_HEADERS["Quality"] = {
+            "Client escalation": None,
+            "Not writing testcases": None,
+            "Invalid defects": None,
+            "Client's requirement not well understood": None,
+            "Issue rejected internally before raising": None,
+            "Time management": None,
+            "Interactions in meetings": None,
+            "Testcondition/ Test scenario missing": None,
+            "Grammer incorrect": None,
+            "Precondition missing": None,
+            "Communication": None,
+            "Overall understanding of app flow": None
+        }
     filtered_columns = []
     for column in ALLOWED_COLUMNS:
         if column in core_columns:
@@ -2708,6 +2885,7 @@ def full_table_view(id):
                     filtered_columns.append(column)
                   
     
+     
     return render_template("full_table_view.html", employee=employee, ALLOWED_COLUMNS=filtered_columns,TABLE_HEADERS=TABLE_HEADERS,years=years,selected_year=int(selected_year),selected_date=selected_date,monthsDict=monthsDict,current_month=current_month,selected_month=selected_month,project=project,role=role,approved=approved)
     
     
@@ -2739,7 +2917,7 @@ def approve_selected():
         
 @app.route('/form_bulk_upload', methods=['GET','POST'])
 @login_required
-@role_required("manager")
+@role_required("manager","ad_m")
 def form_bulk_upload():
     
     # field_to_column = {
@@ -3176,7 +3354,7 @@ def form_bulk_upload():
 
 @app.route("/set_targets/<string:emp_id>",methods=["GET","POST"])
 @login_required
-@role_required("admin", "manager")
+@role_required("admin", "manager","ad_m")
 def set_targets(emp_id):
     role=request.args.get('role')
     target_month = request.form.get("target_month")

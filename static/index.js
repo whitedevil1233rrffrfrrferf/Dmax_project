@@ -151,6 +151,17 @@ function toggleProjectTable() {
             document.getElementById(sectionId).style.display = "block";
         });
     }
+    if (projectSelectValue === "Indihood") {
+        const indihoodQuality = document.getElementById("Indihood_quality");
+        const quality = document.getElementById("quality");
+        if (indihoodQuality) indihoodQuality.style.display = "";
+        if (quality) quality.style.display = "none";
+    } else {
+        const indihoodQuality = document.getElementById("Indihood_quality");
+        const quality = document.getElementById("quality");
+        if (indihoodQuality) indihoodQuality.style.display = "none";
+        if (quality) quality.style.display = "";
+    }
 }
 
 function toggleDesignationTable(){
