@@ -118,7 +118,7 @@ def get_filtered_employees(base_query, search_query, selected_month, selected_da
         base_query = base_query.filter_by(today_date=selected_date)
     return base_query.all()
 
-def get_first_filtered_employees(base_query, search_query, selected_month, selected_date,selected_year):
+def get_first_filtered_employees(base_query, search_query, selected_month, selected_date,selected_year,selected_project):
     if search_query:
         base_query = base_query.filter(func.lower(Dform.employee_name) == search_query)
     if selected_month:
@@ -130,7 +130,9 @@ def get_first_filtered_employees(base_query, search_query, selected_month, selec
         except ValueError:
             print("Invalid date format:", selected_date)  # Debugging log
     if selected_year:  # Add year filtering
-        base_query = base_query.filter(extract('year', Dform.today_date) == int(selected_year))    
+        base_query = base_query.filter(extract('year', Dform.today_date) == int(selected_year)) 
+    if selected_project:
+        base_query = base_query.filter(func.lower(Dform.project) == selected_project.lower())  
     return base_query
 
 def get_date_range_for_month(month, year):
@@ -962,18 +964,18 @@ def home():
                 dform_id=new_entry.id,  # Link to that specific Dform row
                 today_date=new_entry.today_date,
                 employee_id=form_data['employee_id'],
-                client_esc_value=get_weighted_value('client_esc_value'),
-                not_writing_testcase_value=get_weighted_value('not_writing_testcase_value'),
-                invalid_defects_value=get_weighted_value('invalid_defects_value'),
-                client_req_value=get_weighted_value('client_req_value'),
-                issue_rej_value=get_weighted_value('issue_rej_value'),
-                time_man_value=get_weighted_value('time_man_value'),
-                interaction_value=get_weighted_value('interaction_value'),
-                test_condn_value=get_weighted_value('test_condn_value'),
-                gram_incor_value=get_weighted_value('gram_incor_value'),
-                pre_condn_value=get_weighted_value('pre_condn_value'),
-                communication_value=get_weighted_value('communication_value'),
-                app_flow_value=get_weighted_value('app_flow_value')
+                client_esc_value=request.form.get('client_esc_value'),
+                not_writing_testcase_value=request.form.get('not_writing_testcase_value'),
+                invalid_defects_value=request.form.get('invalid_defects_value'),
+                client_req_value=request.form.get('client_req_value'),
+                issue_rej_value=request.form.get('issue_rej_value'),
+                time_man_value=request.form.get('time_man_value'),
+                interaction_value=request.form.get('interaction_value'),
+                test_condn_value=request.form.get('test_condn_value'),
+                gram_incor_value=request.form.get('gram_incor_value'),
+                pre_condn_value=request.form.get('pre_condn_value'),
+                communication_value=request.form.get('communication_value'),
+                app_flow_value=request.form.get('app_flow_value')
             )
             db.session.add(indihood_entry)
 
@@ -1792,24 +1794,7 @@ def view_dscore():
     
     project_names = []
     years = [current_year - i for i in range(11)]
-    # ALLOWED_COLUMNS = [
-    #     "employee_name", "today_date", "test_case_creation_target",
-    #     "test_case_creation_actual", "test_case_updation_target", "test_case_updation_actual",
-    #     "test_case_execution_target", "test_case_execution_actual", "defects_found_target",
-    #     "defects_found_actual","defects_verification_target", "defects_verification_actual", "test_scripts_creation_target", "test_scripts_creation_actual",
-    #     "test_scripts_execution_target","test_scripts_execution_actual","test_scripts_updation_target", "test_scripts_updation_actual",
-    #     "site_Scrub_target", "site_Scrub_actual", "project_doc_target",
-    #     "project_doc_actual", "internal_Review_target", "internal_Review_actual", "regression_cycle_target",
-    #     "regression_cycle_actual", "req_anal_target", "req_anal_actual", "end_cases_exec_target",
-    #     "end_cases_exec_actual", "task_coverage_score_target", "task_coverage_score_actual",
-    #     "assessment_score_target", "assessment_score_actual", "assessment_re_score_target",
-    #     "assessment_re_score_actual", "cert_score_target", "cert_score_actual", "cert_re_score_target",
-    #     "cert_re_score_actual", "new_features_imp_target", "new_features_imp_actual", "defects_fixed_target",
-    #     "defects_fixed_actual", "enhancements_target", "enhancements_actual", "fig_desgns_target",
-    #     "fig_desgns_actual", "doc_update_target", "doc_update_actual", "research_target", "research_actual",
-    #     "inv_defs", "spel_errors", "client_esc", "tst_cases_missing", "att", "dtouch", "new_init", "target", "actual", "production",
-    #     "quality", "attendance", "skill", "new_initiatives", "Dmax_score"
-    # ]
+    
     
     if user_name:
         
@@ -1820,6 +1805,7 @@ def view_dscore():
         search_query = request.args.get('search', '').strip().lower()
         selected_date = request.args.get('date') 
         selected_month = request.args.get('month',current_month)
+        selected_project= request.args.get('project')
         
         selected_year=request.args.get('year',current_year)
         if selected_month.isdigit():  # Only convert if it's numeric
@@ -1847,7 +1833,7 @@ def view_dscore():
             projects_under_manager = ProjectTargets.query.with_entities(ProjectTargets.Project).filter(
                 func.lower(ProjectTargets.Lead) == user_name.lower()
             ).all()
-            print(projects_under_manager)    
+               
             # Extract project names from the query result
             project_names = [proj[0] for proj in projects_under_manager]
             is_actual_manager = False
@@ -1876,7 +1862,8 @@ def view_dscore():
                     search_query,
                     selected_month,
                     selected_date,
-                    selected_year
+                    selected_year,
+                    selected_project
                 )
                 
                 if emp.emp_project == "Indihood":
@@ -1898,6 +1885,7 @@ def view_dscore():
                         total_app_flow_value += quality_entry.app_flow_value or 0
                 else:
                     for entry in matched_employees.all():
+                        
                         total_inv_defs += entry.inv_defs or 0
                         total_spel_errors += entry.spel_errors or 0
                         total_client_esc += entry.client_esc or 0
@@ -2025,16 +2013,24 @@ def view_dscore():
                         }
                         )
             session['filtered_employees'] = json.dumps(filtered_employees)
-            return render_template("view_dscore.html",employees=filtered_employees,role=role,search_query=search_query, selected_month=selected_month, selected_date=selected_date,selected_year=int(selected_year),years=years,is_actual_manager=is_actual_manager,actual_role=actual_role)        
+            return render_template("view_dscore.html",employees=filtered_employees,
+                                   role=role,search_query=search_query, selected_month=selected_month,
+                                   selected_date=selected_date,selected_year=int(selected_year),years=years,
+                                   is_actual_manager=is_actual_manager,actual_role=actual_role,projects=projects,
+                                   selected_project=selected_project)        
 
         if role=="crewmate":
-             
+            total_inv_defs = 0
+            total_spel_errors = 0
+            total_client_esc = 0
+            total_tst_cases_missing = 0 
             matched_employees = get_first_filtered_employees(
                 Dform.query.filter_by(employee_email=email),
                 search_query,
                 selected_month,
                 selected_date,
-                selected_year
+                selected_year,
+                None
             )
             has_client_escalation=False
             for entry in matched_employees.all():
@@ -2047,6 +2043,7 @@ def view_dscore():
 
                 # Final quality calculation
             final_quality = 98 - (total_inv_defs + total_spel_errors + total_client_esc + total_tst_cases_missing)
+            initial_quality=final_quality 
             print("initial_quality",final_quality)  
             all_matched = matched_employees.all()
             if all_matched:
@@ -2123,6 +2120,7 @@ def view_dscore():
                                 "project":first_entry.project,
                                 "project_status": project_status,
                                 "approval_status":approval_status
+                                
                             }
                         )
                     
@@ -2164,24 +2162,29 @@ def view_dscore():
                 total_spel_errors = 0
                 total_client_esc = 0
                 total_tst_cases_missing = 0
+                total_att_count=0
                 # Filter Dform by employee email and other search parameters
                 matched_employees = get_first_filtered_employees(
                     Dform.query.filter_by(employee_email=emp.emp_email),  # Filter by the employee's email
                     search_query,
                     selected_month,
                     selected_date,
-                    selected_year
+                    selected_year,
+                    selected_project
                 )
                 for entry in matched_employees.all():
+                    
                     total_inv_defs += entry.inv_defs or 0
                     total_spel_errors += entry.spel_errors or 0
                     total_client_esc += entry.client_esc or 0
                     total_tst_cases_missing += entry.tst_cases_missing or 0
+                    total_att_count += entry.att or 0
                     if entry.client_esc and entry.client_esc > 0:
                         has_client_escalation = True
 
                 # Final quality calculation
                 final_quality = 98 - (total_inv_defs + total_spel_errors + total_client_esc + total_tst_cases_missing)
+                initial_quality=final_quality
                 print("initial_quality",final_quality)  
                 all_matched = matched_employees.all()
                 if all_matched:
@@ -2244,7 +2247,7 @@ def view_dscore():
                 ).first()   
                 hide_op_excellence_icon = dmax_approval_record and dmax_approval_record.status.lower() == "approved"
 
-                  
+                record_count=matched_employees.count()  
                 # If matched employees exist, calculate averages
                 if matched_employees.count() > 0:
                     averages = get_averages_for_filtered_employees(matched_employees)
@@ -2286,7 +2289,10 @@ def view_dscore():
                                 "approval_status": approval_status,
                                 "is_approval_manager": is_approval_manager,
                                 "flag": emp.emp_project in project_names,
-                                "hide_op_excellence_icon": hide_op_excellence_icon
+                                "hide_op_excellence_icon": hide_op_excellence_icon,
+                                "record_count": record_count,
+                                "att_count":total_att_count,
+                                "initial_quality":initial_quality
                                 
                             }
                         )
@@ -2306,7 +2312,11 @@ def view_dscore():
             #                     for column in ALLOWED_COLUMNS         # Filter by allowed columns
             #                 }
             #             )
-            return render_template("view_dscore.html", employees=filtered_employees, role=role, search_query=search_query, selected_month=selected_month, selected_date=selected_date,selected_year=int(selected_year),years=years)
+            session['filtered_employees'] = json.dumps(filtered_employees)
+            return render_template("view_dscore.html", employees=filtered_employees, role=role,
+                                    search_query=search_query, selected_month=selected_month,
+                                      selected_date=selected_date,selected_year=int(selected_year),years=years,
+                                      projects=projects,selected_project=selected_project)
 
 @app.route('/delete_employee/<int:id>', methods=['POST'])
 def delete_employee(id):
@@ -2442,7 +2452,7 @@ def full_table_view(id):
         status="Approved"# If you need to check specifically for an approved status
     ).first()
     approved = "Yes" if approval_exists else "No"
-    filtered_query=get_first_filtered_employees(base_query, None, selected_month, selected_date, selected_year)
+    filtered_query=get_first_filtered_employees(base_query, None, selected_month, selected_date, selected_year,None)
     if project == "Indihood":
         filtered_query = filtered_query.join(IndihoodQuality, Dform.id == IndihoodQuality.dform_id)
         filtered_query = filtered_query.add_entity(IndihoodQuality)
@@ -3796,13 +3806,6 @@ def check_operational_excellence():
 
 
 
-
-@app.route("/test12")
-@login_required
-def test():
-    return "hello"
-
-
 @app.route('/download_employee_report', methods=['POST'])
 def download_employee_report():
     # Load your Excel template from static/files
@@ -3814,7 +3817,7 @@ def download_employee_report():
 
     # Load employee data from session
     filtered_employees = json.loads(session.get('filtered_employees', '[]'))
-
+    print(filtered_employees)
     # Start writing from row 3 (assuming headers are in row 1 and 2)
     start_row = 3
     for index, emp in enumerate(filtered_employees, start=start_row):
@@ -3822,16 +3825,21 @@ def download_employee_report():
         ws.cell(row=index, column=2, value=emp["employee_name"])
         ws.cell(row=index, column=3, value=emp["target"])
         ws.cell(row=index, column=4, value=emp["actual"])
-        ws.cell(row=index, column=5, value="98")
-        ws.cell(row=index, column=6, value=emp["initial_quality"])
-        ws.cell(row=index, column=7, value=emp["skill"]) 
-        ws.cell(row=index, column=8, value=emp["Dmax_score"])
-        ws.cell(row=index, column=9, value=emp["project"])
-        ws.cell(row=index, column=10, value=emp["production"])
-        ws.cell(row=index, column=11, value=emp["quality"])
-        ws.cell(row=index, column=12, value=emp["attendance"])
+        ws.cell(row=index, column=5, value=emp["record_count"])
+        ws.cell(row=index, column=6, value=emp["att_count"])
+        ws.cell(row=index, column=7, value="98")
+        ws.cell(row=index, column=8, value=emp["initial_quality"])
+        ws.cell(row=index, column=9, value=emp["production"])
+        ws.cell(row=index, column=10, value=emp["quality"])
+        ws.cell(row=index, column=11, value=emp["attendance"])
+        ws.cell(row=index, column=12, value=emp["skill"]) 
         ws.cell(row=index, column=13, value=emp["new_initiatives"])
-        ws.cell(row=index, column=14, value="Yes" if emp["is_actual_manager"] else "No")
+        ws.cell(row=index, column=14, value=emp["Dmax_score"])
+        
+        
+        
+        
+        # ws.cell(row=index, column=14, value="Yes" if emp["is_actual_manager"] else "No")
 
     # Save to a temporary file
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")

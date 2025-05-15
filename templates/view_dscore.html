@@ -61,13 +61,34 @@
               <label for="year">Year</label>
               <select id="year" onchange="handleFilters()" style="width:5rem;">
                 
-                {% for year in years %}
-                    <option value="{{ year }}" {% if selected_year|int == year %}selected{% endif %}>
-                        {{ year }}
+                  {% for year in years %}
+                      <option value="{{ year }}" {% if selected_year|int == year %}selected{% endif %}>
+                          {{ year }}
+                      </option>
+                  {% endfor %}
+              </select>
+            </div>
+            <div class="inner_filter_div">
+              <label for="project">Project</label>
+              <select id="project" onchange="handleFilters()" name="project">
+                <option value=""  {% if not selected_project %}selected{% endif %}>Select</option>
+                  {% for project in projects %}
+                    <option value="{{ project }}" {% if project == selected_project %}selected{% endif %}>
+                         {{ project }}
                     </option>
-                {% endfor %}
-            </select>
-          </div>
+                  {% endfor %}
+              </select>
+            </div>
+            {% if role == "admin"%}
+              <div class="inner_filter_div">
+                <form method="POST" action="{{ url_for('download_employee_report') }}">
+                  <button type="submit" class="btn btn-primary" style="width:10rem;">Download Report</button>
+                </form>
+              </div>
+            {% endif %}
+            
+            
+
             
         </div>
         
@@ -230,9 +251,7 @@
                         </tbody> -->
                     </table>
                 </div>
-                <form method="POST" action="{{ url_for('download_employee_report') }}">
-                  <button type="submit" class="btn btn-primary">Download Report</button>
-                </form>
+                
       </div>
     </div>
     <script>

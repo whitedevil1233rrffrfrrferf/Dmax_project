@@ -4,28 +4,18 @@ const monthsDict = {
     "9": "September", "10": "October", "11": "November", "12": "December"
 };
 function handleFilters() {
-    const date=document.getElementById("date").value
-    const month=document.getElementById("month").value
-    const year=document.getElementById("year").value
+    const fields=['date', 'month', 'year','project']
+
+
     let urlParams = new URLSearchParams(window.location.search); 
-    if (date) {
-        urlParams.set('date', date);
-    } else {
-        // If no date is selected, remove it from the URL parameters
-        urlParams.delete('date');
-    }
-    if (month) {
-        urlParams.set('month', month);
-    } else {
-        // If no date is selected, remove it from the URL parameters
-        urlParams.delete('month');
-    }
-    if (year) {
-        urlParams.set('year', year);
-    } else {
-        // If no date is selected, remove it from the URL parameters
-        urlParams.delete('year');
-    }
+    fields.forEach(field => {
+        const value=document.getElementById(field).value;
+        if (value) {
+            urlParams.set(field, value);
+        } else {
+            urlParams.delete(field);
+        }
+    });
     window.location.href = `${homeUrl}?${urlParams.toString()}`;
     
 }
