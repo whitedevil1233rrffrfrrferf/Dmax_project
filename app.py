@@ -2454,13 +2454,16 @@ def full_table_view(id):
     approved = "Yes" if approval_exists else "No"
     filtered_query=get_first_filtered_employees(base_query, None, selected_month, selected_date, selected_year,None)
     if project == "Indihood":
-        filtered_query = filtered_query.join(IndihoodQuality, Dform.id == IndihoodQuality.dform_id)
+        filtered_query = filtered_query.outerjoin(IndihoodQuality, Dform.id == IndihoodQuality.dform_id)
         filtered_query = filtered_query.add_entity(IndihoodQuality)
     employee = filtered_query.all() 
     if project == "Indihood":
         for dform, quality in employee:
-            print("commn_value", quality.communication_value)
-            print("invalid_defects", quality.invalid_defects_value)
+            commn_value = quality.communication_value if quality and quality.communication_value is not None else 0
+            inv_defs_value = quality.invalid_defects_value if quality and quality.invalid_defects_value is not None else 0
+            
+            print("commn_value", commn_value)
+            print("invalid_defects", inv_defs_value)
     if not employee:
         employee = []
         print("Employee List:", employee)  # Debugging
@@ -2592,7 +2595,6 @@ def full_table_view(id):
                 "Testscripts Creation",
                 "Testscripts Updation",
                 "Testscripts Execution",
-                "Site Scrub",
                 "Project Documentation",
                 "Internal review",
                 "Regression cycle",
@@ -3602,6 +3604,7 @@ def delete_employee_data():
     
     if not ids_to_delete:
         return jsonify({"success": False, "message": "No IDs received"})    
+    IndihoodQuality.query.filter(IndihoodQuality.dform_id.in_(ids_to_delete)).delete(synchronize_session=False)
     Dform.query.filter(Dform.id.in_(ids_to_delete)).delete()
     db.session.commit()
     return jsonify({"success": True})

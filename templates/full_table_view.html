@@ -16,9 +16,17 @@
         {% include 'sidemenu.html' %}
         
         <div style="margin-left:7rem;">
-            {% if employee and employee|length > 0 %}    
-                <h1 style="text-align: center; width:100%; margin-left:4%; " class="heading">{{ employee[0].employee_name }}'s Record</h1> 
-            {% endif %}    
+            {% if employee and employee|length > 0 %}
+                {% if project == "Indihood" %}
+                    <h1 style="text-align: center; width:100%; margin-left:4%;" class="heading">
+                        {{ employee[0][0].employee_name }}'s Record
+                    </h1>
+                {% else %}
+                    <h1 style="text-align: center; width:100%; margin-left:4%;" class="heading">
+                        {{ employee[0].employee_name }}'s Record
+                    </h1>
+                {% endif %}
+            {% endif %} 
             <div class="filter_div container" style="margin-top:3rem; margin-bottom: 3rem; display: flex; ">
                 <div class="inner_filter_div">
                     <label for="date">Date:</label>
