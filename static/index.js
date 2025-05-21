@@ -151,6 +151,7 @@ function toggleProjectTable() {
             document.getElementById(sectionId).style.display = "block";
         });
     }
+    
     if (projectSelectValue === "Indihood") {
         const indihoodQuality = document.getElementById("Indihood_quality");
         const quality = document.getElementById("quality");

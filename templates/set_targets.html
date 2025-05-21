@@ -316,6 +316,7 @@
                             <td><input type="number" value="{{ fields.get('research_target',0) }}" class="table_inpt" id="research_target" name="research_target"></td>
                         </tr>
                         </tbody>
+                        
                 </table> 
             </div>             
                 </div>
@@ -330,6 +331,9 @@
                     {% endif %}    
                       
                 </div>
+                
+                
+                
                 <!-- <div style="display: flex; justify-content: space-around;">
                     {% if role == "Project Lead" %}
                         <button type="submit" style="display: block;" onclick="setFormAction('set_targets')">Submit</button>
@@ -339,7 +343,10 @@
                       
                 </div> -->
 
-            </form>    
+            </form>   
+                <a href="{{ url_for('targets_bulk_upload') }}">
+                    <button>Bulk Upload</button>
+                </a>
             </div>
         </div>
         <input  value="{{ values.project }}" id="project" type="hidden">

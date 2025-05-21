@@ -1896,15 +1896,32 @@ def view_dscore():
                 # Final quality calculation
                 if emp.emp_project == "Indihood":
                     deductions = (
-                        total_client_esc_value + total_not_writing_testcase_value +
+                        total_not_writing_testcase_value +
                         total_invalid_defects_value + total_client_req_value +
                         total_issue_rej_value + total_time_man_value +
                         total_interaction_value + total_test_condn_value +
                         total_gram_incor_value + total_pre_condn_value +
                         total_communication_value + total_app_flow_value
                     )
-                    print("deductions",deductions)
-                    final_quality = 98 - deductions
+                    if  total_client_esc_value > 0:
+                        final_quality = 0
+                    else:    
+                        final_quality = 98 - deductions
+                    all_matched = matched_employees.all()
+                    if all_matched:
+                        corrected_designation = corrections.get(all_matched[0].designation, all_matched[0].designation)
+                    else:
+                        # No matched employees, handle safely
+                        corrected_designation = None
+                    if corrected_designation == "Intern":
+                        prod_multiplier=50
+                    else:
+                        prod_multiplier = 40    
+                    if has_client_escalation:
+                        final_quality = 0  
+                    else:        
+                        final_quality = final_quality *prod_multiplier / 100
+
                 else:
                     final_quality = 98 - (total_inv_defs + total_spel_errors + total_client_esc + total_tst_cases_missing)
                     initial_quality=final_quality  
@@ -2595,6 +2612,7 @@ def full_table_view(id):
                 "Testscripts Creation",
                 "Testscripts Updation",
                 "Testscripts Execution",
+                "Site Scrub",
                 "Project Documentation",
                 "Internal review",
                 "Regression cycle",
@@ -3851,6 +3869,144 @@ def download_employee_report():
     # Return as a download
     return send_file(tmp.name, as_attachment=True, download_name="employee_report.xlsx")
 
+@app.route('/targets_bulk_upload',methods=['GET', 'POST'])
+def targets_bulk_upload():
+    column_mapping = {
+        "Emp ID": "emp_id",
+        "Test Case Creation Target": "test_case_creation_target",
+        "Test Case Updation Target": "test_case_updation_target",
+        "Test Case Execution Target": "test_case_execution_target",
+        "Defects Found Target": "defects_found_target",
+        "Test Scripts Creation Target": "test_scripts_creation_target",
+        "Test Scripts Updation Target": "test_scripts_updation_target",
+        "Test Scripts Execution Target": "test_scripts_execution_target",
+        "Site Scrub Target": "site_Scrub_target",
+        "Project Doc Target": "project_doc_target",
+        "Internal Review Target": "internal_Review_target",
+        "Regression Cycle Target": "regression_cycle_target",
+        "Requirement Analysis Target": "req_anal_target",
+        "End Cases Execution Target": "end_cases_exec_target",
+        "Task Coverage Score Target": "task_coverage_score_target",
+        "Assessment Score Target": "assessment_score_target",
+        "Assessment Re-score Target": "assessment_re_score_target",
+        "Certification Score Target": "cert_score_target",
+        "Certification Re-score Target": "cert_re_score_target",
+        "New Features Implementation Target": "new_features_imp_target",
+        "Defects Fixed Target": "defects_fixed_target",
+        "Enhancements Target": "enhancements_target",
+        "Figma Designs Target": "fig_desgns_target",
+        "Documentation Update Target": "doc_update_target",
+        "Research Target": "research_target",
+        "Invalid Defects": "inv_defs",
+        "Spelling Errors": "spel_errors",
+        "Client Escapes": "client_esc",
+        "Test Cases Missing": "tst_cases_missing",
+        "Attendance": "att",
+        "Double Touches": "dtouch",
+        "New Initiatives": "new_init",
+        "Issue Verification Target": "defects_verification_target",
+        "Target Month": "target_month",
+        "Target Year": "target_year",
+        "Status": "status"
+    }
+    if request.method == 'POST':
+        file = request.files.get('file')
+        if not file:
+            flash('No file uploaded!', 'danger')
+            return redirect(request.url)
+
+        try:
+            workbook = load_workbook(file)
+            sheet = workbook.active
+
+            headers = [cell.value for cell in next(sheet.iter_rows(min_row=1, max_row=1))]
+            db_columns = [column_mapping.get(h) for h in headers]
+
+            for row in sheet.iter_rows(min_row=2, values_only=True):
+               
+                data = dict(zip(db_columns, row))
+                emp_id = str(data.get("emp_id", "")).strip()
+                target_month_raw = data.get("target_month")
+                target_year_raw = data.get("target_year")
+
+                # Convert to string only if not None
+                target_month = str(target_month_raw).strip() if target_month_raw else ""
+                target_year = str(target_year_raw).strip() if target_year_raw else ""
+
+                if not emp_id or not target_month or not target_year:
+                    flash(f"Employee Id, Target Month, and Target Year are required. Skipping row.", "danger")
+                    continue
+                month_num = monthsDict_2.get(target_month.capitalize())
+                if not month_num:
+                    flash(f"Invalid month name for emp_id {emp_id}. Use standard month names (e.g., January). Skipping row.", "danger")
+                    continue 
+                data["target_month"] = target_month.capitalize()
+                data["target_year"] = target_year     
+                # Convert numeric fields to int (except for spel_errors, which is float)
+                for key, val in data.items():
+                    
+                    if isinstance(val, float) and key != "spel_errors":
+                        data[key] = int(val)
+                first_entry_check = Target_columns.query.filter_by(emp_id=emp_id).first()
+                current_month = datetime.now().strftime("%B")
+                current_year = str(datetime.now().year)
+
+                if month_num != 1 and not first_entry_check:
+                    if target_month != current_month or target_year != current_year:
+                        flash(f"First entry for emp_id {emp_id} must be for {current_month} {current_year}. Skipping row.", "warning")
+                        continue
+                approved_entry = Target_columns.query.filter_by(
+                    emp_id=emp_id,
+                    target_month=target_month,
+                    target_year=target_year,
+                    status="approved"
+                ).first()
+                if approved_entry:
+                    flash(f"Approved target already exists for {target_month} {target_year} for emp_id {emp_id}. Skipping row.", "warning")
+                    continue  
+                existing_entry = Target_columns.query.filter_by(
+                    emp_id=emp_id,
+                    target_month=target_month,
+                    target_year=target_year
+                ).first()
+                if existing_entry:
+                    flash(f"Existing target already exists for {target_month} {target_year} for emp_id {emp_id}.To update it, Please use the targets form Skipping row.", "warning")
+                    continue   
+                if month_num != 1 and first_entry_check:
+                    prev_month_num = month_num - 1
+                    prev_month_name = [k for k, v in monthsDict_2.items() if v == prev_month_num][0]
+
+                    prev_approved = Target_columns.query.filter_by(
+                        emp_id=emp_id,
+                        target_month=prev_month_name,
+                        target_year=target_year,
+                        status="approved"
+                    ).first()
+
+                    if not prev_approved:
+                        flash(f"{prev_month_name}'s target must be approved before adding target for {target_month}. Skipping emp_id {emp_id}.", "warning")
+                        continue
+
+                data["status"]="waiting for approval"      
+                # 🔍 Print the row data before inserting into the DB
+                print(data)
+                data = {str(k): v for k, v in data.items()}
+                print(data)
+                try:
+                    new_entry = Target_columns(**data)
+                    db.session.add(new_entry)
+                except Exception as e:
+                    flash(f"Error adding row: {e}", "danger")
+                    continue
+            db.session.commit()
+            flash('Data printed successfully. Check your console/logs.', 'info')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error uploading file: {str(e)}', 'danger')
+
+        return redirect(url_for('targets_bulk_upload'))
+
+    return render_template('targets_bulk_upload.html')
 with app.app_context():
         
         db.create_all()
