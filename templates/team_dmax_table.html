@@ -111,7 +111,7 @@
                                         
                                         {% elif emp.role == "Project Lead" %}
                                             <a href="{{ url_for('set_targets', emp_id=emp.emp_id,role=emp.role) }}">
-                                                <button class="btn btn-primary">
+                                                <button class="btn btn-primary" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ emp.target_status }}">
                                                     <i class="fa-solid fa-marker"></i>
                                                 </button>
                                             </a> 
@@ -181,6 +181,7 @@
     <script>
         const homeUrl = "{{ url_for('team_dmax_table') }}";
     </script>
+   
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
     <script src="{{ url_for('static', filename='tdmax.js') }}"></script> 
 </body>

@@ -323,7 +323,11 @@
                 
                 <div style="display: flex; justify-content: space-around;">
                     {% if role == "Project Lead" %}
-                        <button type="submit" style="display: block;">Submit</button>
+                        <div style="display: flex; align-items: center; justify-content: center;gap: 1rem;">
+                            <button type="submit" style="display: block;">Submit</button>
+                            <button type="submit" style="display: block;">Back</button>
+                        </div>
+                        
                     {% elif role == "Approval Manager" %}
                         
                         <button type="submit" style="display: block;">Approve Targets</button>
@@ -343,7 +347,10 @@
                       
                 </div> -->
 
-            </form>   
+            </form> 
+                <div>
+
+                </div>  
                 <a href="{{ url_for('targets_bulk_upload') }}">
                     <button>Bulk Upload</button>
                 </a>

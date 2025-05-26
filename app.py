@@ -1667,6 +1667,7 @@ def team_dmax_table():
             selected_year= int(current_year)    
         selected_month_name = monthsDict.get(selected_month)
         employees_under_projects = []
+        selected_year_str    = str(selected_year)
         if role=="admin" or role=="super_admin":
             projects_under_manager = ProjectTargets.query.with_entities(ProjectTargets.Project).filter(
                 func.lower(ProjectTargets.ApprovalManager) == user_name.lower()
@@ -1695,7 +1696,6 @@ def team_dmax_table():
             )
 
         employees_under_manager = employees_under_manager.all()   
-        print(employees_under_manager)    
         projects_led_by_user = ProjectTargets.query.filter(func.lower(ProjectTargets.Lead)==user_name)
         if selected_project:
             projects_led_by_user = projects_led_by_user.filter(
@@ -1750,7 +1750,17 @@ def team_dmax_table():
             target.emp_id: {"month": target.target_month, "year": target.target_year}
             for target in waiting_for_approval_targets
         }
+        period_targets = (
+            Target_columns.query
+            .filter(
+                Target_columns.emp_id.in_([emp.emp_id for emp in all_accessible_employees]),
+                Target_columns.target_month == selected_month_name,
+                Target_columns.target_year  == selected_year_str
+            )
+            .all()
+        )
         
+        status_map={t.emp_id:t.status for t in period_targets}
         filtered_employees = []
         for emp in all_accessible_employees:
                 is_approval_manager = True if emp.emp_project in project_names else False
@@ -1770,7 +1780,8 @@ def team_dmax_table():
                             ) , # Determine role,
                     "has_approved_target": (emp.emp_id in employees_with_approved_targets) if employees_with_approved_targets else False , # Store whether they have an approved target
                     "has_pending_target": employees_with_pending_targets.get(emp.emp_id, {}),
-                    "is_approval_manager": is_approval_manager if is_approval_manager else False     
+                    "is_approval_manager": is_approval_manager if is_approval_manager else False,
+                    "target_status":status_map.get(emp.emp_id,"No targets set")   
                                         })
                 
         return render_template('team_dmax_table.html',employees=filtered_employees,user_name=user_name,years=last_ten_years,selected_month=selected_month, current_month=current_month,monthsDict=monthsDict,current_year=current_year,selected_year=selected_year,selected_month_name=selected_month_name,projects=project_names,selected_project=selected_project,actual_role=actual_role)
@@ -2175,11 +2186,25 @@ def view_dscore():
             filtered_employees = []
             has_client_escalation= False
             for emp in employees_under_manager:
-                total_inv_defs = 0
-                total_spel_errors = 0
-                total_client_esc = 0
-                total_tst_cases_missing = 0
-                total_att_count=0
+                if emp.emp_project == "Indihood":
+                    total_client_esc_value = 0
+                    total_not_writing_testcase_value = 0
+                    total_invalid_defects_value = 0
+                    total_client_req_value = 0
+                    total_issue_rej_value = 0
+                    total_time_man_value = 0
+                    total_interaction_value = 0
+                    total_test_condn_value = 0
+                    total_gram_incor_value = 0
+                    total_pre_condn_value = 0
+                    total_communication_value = 0
+                    total_app_flow_value = 0
+                else:    
+                    total_inv_defs = 0
+                    total_spel_errors = 0
+                    total_client_esc = 0
+                    total_tst_cases_missing = 0
+                    total_att_count=0
                 # Filter Dform by employee email and other search parameters
                 matched_employees = get_first_filtered_employees(
                     Dform.query.filter_by(employee_email=emp.emp_email),  # Filter by the employee's email
@@ -2189,35 +2214,80 @@ def view_dscore():
                     selected_year,
                     selected_project
                 )
-                for entry in matched_employees.all():
+                if emp.emp_project == "Indihood":
+                    joined_matched_employees = matched_employees.join(
+                            IndihoodQuality, Dform.id == IndihoodQuality.dform_id
+                        ).add_entity(IndihoodQuality)
+                    for dform_entry, quality_entry in joined_matched_employees.all():
+                        total_client_esc_value += quality_entry.client_esc_value or 0
+                        total_not_writing_testcase_value += quality_entry.not_writing_testcase_value or 0
+                        total_invalid_defects_value += quality_entry.invalid_defects_value or 0
+                        total_client_req_value += quality_entry.client_req_value or 0
+                        total_issue_rej_value += quality_entry.issue_rej_value or 0
+                        total_time_man_value += quality_entry.time_man_value or 0
+                        total_interaction_value += quality_entry.interaction_value or 0
+                        total_test_condn_value += quality_entry.test_condn_value or 0
+                        total_gram_incor_value += quality_entry.gram_incor_value or 0
+                        total_pre_condn_value += quality_entry.pre_condn_value or 0
+                        total_communication_value += quality_entry.communication_value or 0
+                        total_app_flow_value += quality_entry.app_flow_value or 0
+                else:
+                    for entry in matched_employees.all():
                     
-                    total_inv_defs += entry.inv_defs or 0
-                    total_spel_errors += entry.spel_errors or 0
-                    total_client_esc += entry.client_esc or 0
-                    total_tst_cases_missing += entry.tst_cases_missing or 0
-                    total_att_count += entry.att or 0
-                    if entry.client_esc and entry.client_esc > 0:
-                        has_client_escalation = True
-
+                        total_inv_defs += entry.inv_defs or 0
+                        total_spel_errors += entry.spel_errors or 0
+                        total_client_esc += entry.client_esc or 0
+                        total_tst_cases_missing += entry.tst_cases_missing or 0
+                        total_att_count += entry.att or 0
+                        if entry.client_esc and entry.client_esc > 0:
+                            has_client_escalation = True
+                if emp.emp_project == "Indihood":
+                    deductions = (
+                        total_not_writing_testcase_value +
+                        total_invalid_defects_value + total_client_req_value +
+                        total_issue_rej_value + total_time_man_value +
+                        total_interaction_value + total_test_condn_value +
+                        total_gram_incor_value + total_pre_condn_value +
+                        total_communication_value + total_app_flow_value
+                    )
+                    if  total_client_esc_value > 0:
+                        final_quality = 0
+                    else:    
+                        final_quality = 98 - deductions
+                    all_matched = matched_employees.all()
+                    if all_matched:
+                        corrected_designation = corrections.get(all_matched[0].designation, all_matched[0].designation)
+                    else:
+                        # No matched employees, handle safely
+                        corrected_designation = None
+                    if corrected_designation == "Intern":
+                        prod_multiplier=50
+                    else:
+                        prod_multiplier = 40    
+                    if has_client_escalation:
+                        final_quality = 0  
+                    else:        
+                        final_quality = final_quality *prod_multiplier / 100
                 # Final quality calculation
-                final_quality = 98 - (total_inv_defs + total_spel_errors + total_client_esc + total_tst_cases_missing)
-                initial_quality=final_quality
-                print("initial_quality",final_quality)  
-                all_matched = matched_employees.all()
-                if all_matched:
-                    corrected_designation = corrections.get(all_matched[0].designation, all_matched[0].designation)
                 else:
-                    # No matched employees, handle safely
-                    corrected_designation = None
-                if corrected_designation == "Intern":
-                    prod_multiplier=50
-                else:
-                    prod_multiplier = 40    
-                if has_client_escalation:
-                    final_quality = 0  
-                else:        
-                    final_quality = final_quality *prod_multiplier / 100     
-                print(final_quality)
+                    final_quality = 98 - (total_inv_defs + total_spel_errors + total_client_esc + total_tst_cases_missing)
+                    initial_quality=final_quality
+                    print("initial_quality",final_quality)  
+                    all_matched = matched_employees.all()
+                    if all_matched:
+                        corrected_designation = corrections.get(all_matched[0].designation, all_matched[0].designation)
+                    else:
+                        # No matched employees, handle safely
+                        corrected_designation = None
+                    if corrected_designation == "Intern":
+                        prod_multiplier=50
+                    else:
+                        prod_multiplier = 40    
+                    if has_client_escalation:
+                        final_quality = 0  
+                    else:        
+                        final_quality = final_quality *prod_multiplier / 100     
+                    print(final_quality)
                 emp_id = db.session.query(Employee_information.emp_id).filter(
                     Employee_information.emp_email == emp.emp_email
                 ).first()

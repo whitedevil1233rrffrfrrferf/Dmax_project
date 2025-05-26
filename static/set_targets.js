@@ -29,3 +29,12 @@ function toggleProjectTable() {
 
 // Call the function when the document is loaded
 document.addEventListener("DOMContentLoaded", toggleProjectTable);
+ document.getElementById("myForm").addEventListener("submit", function(event) {
+        const confirmed = confirm("Are you sure you want to submit the form?");
+        if (!confirmed) {
+            event.preventDefault(); // Stop form submission if not confirmed
+        } else {
+            alert("Form submitted successfully!");
+            // Optional: you may not see this alert if the form redirects immediately
+        }
+    });
