@@ -68,7 +68,7 @@
             
             <div class="inside_container">
                 <center> <img src="{{ url_for('static', filename='qaoncloud_logo.png') }}" alt="QAonCloud" class="logo" width="100px"></center>
-                <h1 class="heading">Welcome to Daily DMAX Form</h1>
+                <h1 class="heading">Welcome to Weekly DMAX Form</h1>
                 {% with messages = get_flashed_messages(with_categories=True) %}
                     {% if messages %}
                         <div id="flash-messages">
@@ -90,7 +90,7 @@
                     <li>Client escalations (If anyone received Escalation then put 1 for all days in that month else 0)</li>
                 </ul>
             <form method="post" action="{{url_for('home')}}" id="myForm" autocomplete="off">
-                <div class="form_div first_form_div" style="margin-left:auto;margin-right: auto; height:16rem;">
+                <div class="form_div first_form_div" style="margin-left:auto;margin-right: auto; height:21rem;">
                     <h3 class="secondary_heading">Basic Information</h3>
                     <div class="flex_first_div">
                         
@@ -126,12 +126,17 @@
                             <input type="email" id="employee_email" name="employee_email" required class="ipt" placeholder="yy@qaoncloud.com">
                         </div>
                         <div class="inside_flex_div">
-                            <label for="today-date">Today's Date:</label>
+                            <label for="today-date">From Date:</label>
                             <input type="date" id="today_date" name="today_date" required class="iptef">
                         </div>
                         
+                        
                     </div>
                     <div class="flex_first_div">
+                        <div class="inside_flex_div">
+                            <label for="today-date">To Date:</label>
+                            <input type="date" id="today_date" name="today_date" required class="iptef">
+                        </div>
                         <div class="inside_flex_div">
                             <label for="project" class="two_label">Select your :<br>Project</label>
                             <select id="project" name="project" class="proj_Sel select" required onchange="toggleProjectTable()">
@@ -151,6 +156,10 @@
                                 <option value="Training">Training</option>
                             </select>
                         </div>
+                    </div>
+                   
+                    <div class="flex_first_div">
+                        
                         <div class="inside_flex_div">
                             <label for="designation" class="two_label">Select your :<br> Designation</label>
                             <select id="designation" name="designation" class="desg_Sel select" required onchange="toggleDesignationTable()">
@@ -574,97 +583,6 @@
                             </tr>
                         </tbody>
                     </table> 
-                    <table id="Auxo_quality" style="display: none;">
-                        <thead>
-                            <tr>
-                                <th>Fields</th>
-                                <th>Weightage</th>
-                                <th>Value</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td class="row_data">Client escalation</td>
-                                <td><input type="number" placeholder="0 for entire month" class="table_inpt" id="auxo_client_esc_weightage" name="client_esc_weightage" readonly></td>
-                                <td><input type="number" value="0" class="table_inpt" id="auxo_client_esc_value" name="auxo_client_esc_value" step="any"></td>
-                            </tr>
-                            <tr>
-                                <td class="row_data">Not writing testcases</td>
-                                <td><input type="number" placeholder="10%" class="table_inpt" id="not_writing_testcase_weightage" name="not_writing_testcase_weightage"></td>
-                                <td><input type="number" value="0" class="table_inpt" id="auxo_not_writing_testcase_value" name="auxo_not_writing_testcase_value" step="any"></td>
-                            </tr>
-                            <tr>
-                                <td class="row_data">Invalid defects</td>
-                                <td><input type="number" placeholder="1-5%" class="table_inpt" id="auxo_invalid_defects_weightage" name="auxo_invalid_defects_weightage"></td>
-                                <td><input type="number" value="0" class="table_inpt" id="auxo_invalid_defects_value" name="auxo_invalid_defects_value" step="any"></td>
-                            </tr>
-                            <tr>
-                                <td class="row_data">Client's requirement not well understood</td>
-                                <td><input type="number" placeholder="1-5%" class="table_inpt" id="auxo_client_req_weightage" name="auxo_client_req_weightage"></td>
-                                <td><input type="number" value="0" class="table_inpt" id="auxo_client_req_value" name="auxo_client_req_value" step="any"></td>
-                            </tr>
-                            <tr>
-                                <td class="row_data">Issue rejected internally before raising</td>
-                                <td><input type="number" placeholder="1-5%" class="table_inpt" id="auxo_issue_rej_weightage" name="auxo_issue_rej_weightage"></td>
-                                <td><input type="number" value="0" class="table_inpt" id="auxo_issue_rej_value" name="auxo_issue_rej_value" step="any"></td>
-                            </tr>
-                            <tr>
-                                <td class="row_data">Time management ( Shift Time / Response time)</td>
-                                <td><input type="number" placeholder="1-5%" class="table_inpt" id="auxo_time_man_weightage" name="auxo_time_man_weightage"></td>
-                                <td><input type="number" value="0" class="table_inpt" id="auxo_time_man_value" name="auxo_time_man_value" step="any"></td>
-                            </tr>
-                            <tr>
-                                <td class="row_data">Interactions in meetings</td>
-                                <td><input type="number" placeholder="1-5%" class="table_inpt" id="auxo_interaction_weightage" name="auxo_interaction_weightage"></td>
-                                <td><input type="number" value="0" class="table_inpt" id="auxo_interaction_value" name="auxo_interaction_value" step="any"></td>
-                            </tr>
-                            <tr>
-                                <td class="row_data">Testcondition/ Test scenario missing</td>
-                                <td><input type="number" placeholder="1-5%" class="table_inpt" id="auxo_test_condn_weightage" name="auxo_test_condn_weightage"></td>
-                                <td><input type="number" value="0" class="table_inpt" id="auxo_test_condn_value" name="auxo_test_condn_value" step="any"></td>
-                            </tr>
-                            <tr>
-                                <td class="row_data">Grammer incorrect</td>
-                                <td><input type="number" placeholder="1-5%" class="table_inpt" id="auxo_gram_incor_weightage" name="auxo_gram_incor_weightage"></td>
-                                <td><input type="number" value="0" class="table_inpt" id="auxo_gram_incor_value" name="auxo_gram_incor_value" step="any"></td>
-                            </tr>
-                            <tr>
-                                <td class="row_data">Precondition missing</td>
-                                <td><input type="number" placeholder="1-5%" class="table_inpt" id="auxo_pre_condn_weightage" name="auxo_pre_condn_weightage"></td>
-                                <td><input type="number" value="0" class="table_inpt" id="auxo_pre_condn_value" name="auxo_pre_condn_value" step="any"></td>
-                            </tr>
-                            <tr>
-                                <td class="row_data">Communication</td>
-                                <td><input type="number" placeholder="1-5%" class="table_inpt" id="auxo_communication_weightage" name="auxo_communication_weightage"></td>
-                                <td><input type="number" value="0" class="table_inpt" id="auxo_communication_value" name="auxo_communication_value" step="any"></td>
-                            </tr>
-                            <tr>
-                                <td class="row_data">No Regression Testing</td>
-                                <td><input type="number" placeholder="1-5%" class="table_inpt" id="auxo_app_flow_weightage" name="auxo_app_flow_weightage"></td>
-                                <td><input type="number" value="0" class="table_inpt" id="auxo_regression_value" name="auxo_regression_value" step="any"></td>
-                            </tr>
-                            <tr>
-                                <td class="row_data">Overall understanding of app flow</td>
-                                <td><input type="number" placeholder="1-5%" class="table_inpt" id="auxo_app_flow_weightage" name="auxo_app_flow_weightage"></td>
-                                <td><input type="number" value="0" class="table_inpt" id="auxo_app_flow_value" name="auxo_app_flow_value" step="any"></td>
-                            </tr>
-                            <tr>
-                                <td class="row_data">Demo presentation</td>
-                                <td><input type="number" placeholder="1-10%" class="table_inpt" id="auxo_demo_presentation_weightage" name="auxo_demo_presentation_weightage"></td>
-                                <td><input type="number" value="0" class="table_inpt" id="auxo_demo_presentation_value" name="auxo_demo_presentation_value" step="any"></td>
-                            </tr>
-                            <tr>
-                                <td class="row_data">Daily work quality</td>
-                                <td><input type="number" placeholder="1-10%" class="table_inpt" id="daily_work_weightage" name="daily_work_weightage"></td>
-                                <td><input type="number" value="0" class="table_inpt" id="auxo_daily_work_value" name="auxo_daily_work_value" step="any"></td>
-                            </tr>
-                            <tr>
-                                <td class="row_data">Demo feedback work</td>
-                                <td><input type="number" placeholder="1-10%" class="table_inpt" id="demo_feedback_weightage" name="demo_feedback_weightage"></td>
-                                <td><input type="number" value="0" class="table_inpt" id="auxo_demo_feedback_value" name="auxo_demo_feedback_value" step="any"></td>
-                            </tr>
-                        </tbody>
-                    </table>
                 </div>
                 
                 <div style="display: flex; justify-content: space-around;">

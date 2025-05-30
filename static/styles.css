@@ -8,7 +8,7 @@ body {
     outline: none;
     place-content:center;
   }
-label{
+#file_choose ,#weekly_file_choose{
     display: inline-block;
     text-transform: uppercase;
     color: #fff;

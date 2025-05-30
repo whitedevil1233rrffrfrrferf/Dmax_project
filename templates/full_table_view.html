@@ -161,6 +161,45 @@
                                                 
                                             </tr>
                                         {% endfor %}
+                                    {% elif project == "Auxo" %}
+                                        {% for emp, quality in employee %}
+                                            <tr>
+                                                {% if approved != "Yes" %}
+                                                    <td class="table_row">
+                                                        <input type="checkbox" class="rowCheckbox" value="{{ emp.id }}">
+                                                    </td>
+                                                {% endif %}
+                            
+                                                {% for column in ALLOWED_COLUMNS %}
+                                                    <td class="table_row">{{ emp | get_attr(column) }}</td>
+                                                    {% if column == "site_Scrub_actual" %}
+                                                        <!-- Indihood-specific fields inserted after site_Scrub_actual -->
+                                                        <td class="table_row">{{ quality.client_esc_value }}</td>
+                                                        <td class="table_row">{{ quality.not_writing_testcase_value }}</td>
+                                                        <td class="table_row">{{ quality.invalid_defects_value }}</td>
+                                                        <td class="table_row">{{ quality.client_req_value }}</td>
+                                                        <td class="table_row">{{ quality.issue_rej_value }}</td>
+                                                        <td class="table_row">{{ quality.time_man_value }}</td>
+                                                        <td class="table_row">{{ quality.interaction_value }}</td>
+                                                        <td class="table_row">{{ quality.test_condn_value }}</td>
+                                                        <td class="table_row">{{ quality.gram_incor_value }}</td>
+                                                        <td class="table_row">{{ quality.pre_condn_value }}</td>
+                                                        <td class="table_row">{{ quality.communication_value }}</td>
+                                                        <td class="table_row">{{ quality.regression_value }}</td>
+                                                        <td class="table_row">{{ quality.app_flow_value }}</td>
+                                                        <td class="table_row">{{ quality.demo_presentation_value }}</td>
+                                                        <td class="table_row">{{ quality.daily_work_value }}</td>
+                                                        <td class="table_row">{{ quality.demo_feedback_value }}</td>
+                                                    {% endif %}
+                                                {% endfor %}
+                            
+                                                <!-- Indihood-specific fields -->
+                                                
+                                                
+                                                
+                                                
+                                            </tr>
+                                        {% endfor %}    
                                     {% else %}
                                         {% for emp in employee %}
                                             <tr>

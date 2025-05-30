@@ -155,9 +155,19 @@ function toggleProjectTable() {
     if (projectSelectValue === "Indihood") {
         const indihoodQuality = document.getElementById("Indihood_quality");
         const quality = document.getElementById("quality");
+        const Auxo_quality = document.getElementById("Auxo_quality");
+        if (Auxo_quality) Auxo_quality.style.display = "none";
         if (indihoodQuality) indihoodQuality.style.display = "";
         if (quality) quality.style.display = "none";
-    } else {
+    } else if (projectSelectValue === "Auxo") {
+        const indihoodQuality = document.getElementById("Indihood_quality");
+        const quality = document.getElementById("quality");
+        const Auxo_quality = document.getElementById("Auxo_quality");
+        if (Auxo_quality) Auxo_quality.style.display = "";
+        if (indihoodQuality) indihoodQuality.style.display = "none";
+        if (quality) quality.style.display = "none";
+    }
+    else {
         const indihoodQuality = document.getElementById("Indihood_quality");
         const quality = document.getElementById("quality");
         if (indihoodQuality) indihoodQuality.style.display = "none";

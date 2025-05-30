@@ -10,6 +10,7 @@
     
 </head>
 <body>
+    
     <div class="side-menus" style=" width:8%;display:flex; flex-direction: column; justify-content: space-between; height:90%;">
         
         {% if user_role == 'admin' or user_role == 'super_admin' %}
@@ -47,12 +48,21 @@
             
         {% endif %}
         {% if user_role == 'manager' %}
-            <div class="inner_sidemenu_div">
-                <a href="{{url_for('home')}}" class="menu-item" title="Form">
-                    <i class="fa-solid fa-file-pen"></i>
-                    <span class="menu-text">Form</span>
-                </a>
-            </div>
+            {% if project_frequency == 'Monthly' %}
+                <div class="inner_sidemenu_div">
+                    <a href="{{url_for('home')}}" class="menu-item" title="Form">
+                        <i class="fa-solid fa-file-pen"></i>
+                        <span class="menu-text">Form</span>
+                    </a>
+                </div>
+            {% elif project_frequency == 'Weekly' %}
+                <div class="inner_sidemenu_div">
+                    <a href="{{url_for('weekly_form')}}" class="menu-item" title="Form">
+                        <i class="fa-solid fa-file-pen"></i>
+                        <span class="menu-text">Form</span>
+                    </a>
+                </div>
+            {% endif %}    
             <div class="inner_sidemenu_div">
                 <a href="{{url_for('team_dmax_table')}}" class="menu-item" title="Team info">
                     <i class="fa-solid fa-users"></i>

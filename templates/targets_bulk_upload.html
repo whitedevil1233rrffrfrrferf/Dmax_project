@@ -72,32 +72,74 @@
         <div class="card">
           
           <div class="card-body">
-              <div class="container" style="display: flex; justify-content: space-around; align-items: center; height: 20rem; margin-top: 20px;">
-                <div style="display: flex; flex-direction: column;">
-                  <h2 style="color: gray;">Step:-1</h2>
-                  <div style="border: 1px solid black; padding: 20px; width:30rem; box-shadow: 5px 15px 25px rgba(0,0,0,0.35); height:10rem;">
-                    <h2 style="text-align: center;">Download Excel format</h2>
-                    <a href="static/files/Targets_bulk.xlsx" download class="btn btn-info icon mt-3">Download <i
-                            class="fa-solid fa-download"></i></a>
+            <ul class="nav nav-tabs" id="uploadTabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="monthly-tab" data-bs-toggle="tab" data-bs-target="#monthly" type="button" role="tab" aria-controls="monthly" aria-selected="true">
+                  📅 Monthly
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="weekly-tab" data-bs-toggle="tab" data-bs-target="#weekly" type="button" role="tab" aria-controls="weekly" aria-selected="false">
+                  📅 Weekly
+                </button>
+              </li>
+            </ul>
+              <div class="tab-content" id="uploadTabsContent">
+                <div class="tab-pane fade show active" id="monthly" role="tabpanel" aria-labelledby="monthly-tab">
+                  <div class="container" style="display: flex; justify-content: space-around; align-items: center; height: 20rem; margin-top: 20px;">
+                    <div style="display: flex; flex-direction: column;">
+                      <h2 style="color: gray;">Step:-1</h2>
+                      <div style="border: 1px solid black; padding: 20px; width:30rem; box-shadow: 5px 15px 25px rgba(0,0,0,0.35); height:10rem;">
+                        <h2 style="text-align: center;">Download Excel format</h2>
+                        <a href="static/files/Targets_bulk.xlsx" download class="btn btn-info icon mt-3">Download <i
+                                class="fa-solid fa-download"></i></a>
+                              
+                      </div>
+                    </div>  
+                      <div style="display: flex; flex-direction: column;">
+                        <h2 style="color: gray;">Step:-2</h2>
+                        <form action="{{url_for('targets_bulk_upload')}}" method="post" enctype="multipart/form-data" style=" max-width:40rem; border: 1px solid black; padding: 20px; width:30rem; box-shadow: 5px 15px 25px rgba(0,0,0,0.35);">
                           
-                  </div>
-                </div>  
-                  <div style="display: flex; flex-direction: column;">
-                    <h2 style="color: gray;">Step:-2</h2>
-                    <form action="{{url_for('targets_bulk_upload')}}" method="post" enctype="multipart/form-data" style=" max-width:40rem; border: 1px solid black; padding: 20px; width:30rem; box-shadow: 5px 15px 25px rgba(0,0,0,0.35);">
+                            <div  style="position: relative; left:100px;">
+                                <h4 style="display: inline; text-align: center;">File:</h4>
+                                <label for="file" id="file_choose">Choose a File <i class="fa-solid fa-upload"></i></label>
+                                <input type="file" id="file" name="file" class="file-input" accept=".xlsx"  required>
+                                <span id="file-name" style="display: block; color: gray; margin-left:20%;"></span>
+                            </div>
+            
+                            <button type="submit" class="btn btn-primary mt-3 upload" style="position: relative; left:170px; top:10px;" id="emp_info_upload">Upload</button>
+                        </form>
+                      </div>    
                       
-                        <div  style="position: relative; left:100px;">
-                            <h4 style="display: inline; text-align: center;">File:</h4>
-                            <label for="file">Choose a File <i class="fa-solid fa-upload"></i></label>
-                            <input type="file" id="file" name="file" class="file-input" accept=".xlsx"  required>
-                            <span id="file-name" style="display: block; color: gray; margin-left:20%;"></span>
-                        </div>
-        
-                        <button type="submit" class="btn btn-primary mt-3 upload" style="position: relative; left:170px; top:10px;" id="emp_info_upload">Upload</button>
-                    </form>
                   </div>    
-                  
-                  
+                </div>
+                <div class="tab-pane fade" id="weekly" role="tabpanel" aria-labelledby="weekly-tab">
+                  <div class="container" style="display: flex; justify-content: space-around; align-items: center; height: 20rem; margin-top: 20px;">
+                    <div style="display: flex; flex-direction: column;">
+                      <h2 style="color: gray;">Step:-1</h2>
+                      <div style="border: 1px solid black; padding: 20px; width:30rem; box-shadow: 5px 15px 25px rgba(0,0,0,0.35); height:10rem;">
+                        <h2 style="text-align: center;">Download Excel format</h2>
+                        <a href="static/files/Weekly_targets_sample.xlsx" download class="btn btn-info icon mt-3">Download <i
+                                class="fa-solid fa-download"></i></a>
+                              
+                      </div>
+                    </div>  
+                      <div style="display: flex; flex-direction: column;">
+                        <h2 style="color: gray;">Step:-2</h2>
+                        <form action="{{url_for('weekly_targets_bulk_upload')}}" method="post" enctype="multipart/form-data" style=" max-width:40rem; border: 1px solid black; padding: 20px; width:30rem; box-shadow: 5px 15px 25px rgba(0,0,0,0.35);">
+                          
+                            <div  style="position: relative; left:100px;">
+                                <h4 style="display: inline; text-align: center;">File:</h4>
+                                <label for="weekly_file" id="weekly_file_choose">Choose a File <i class="fa-solid fa-upload"></i></label>
+                                <input type="file" id="weekly_file" name="file" class="file-input" accept=".xlsx" required>
+                                <span id="weekly_file_name" style="display: block; color: gray; margin-left:20%;"></span>
+                            </div>
+            
+                            <button type="submit" class="btn btn-primary mt-3 upload" style="position: relative; left:170px; top:10px;" id="emp_info_upload">Upload</button>
+                        </form>
+                      </div>    
+                      
+                  </div>    
               </div>
               <div style="display: flex; flex-direction: column; align-items: center; padding: 10px;text-align: center;">
                 <div style="padding: 10px; ">

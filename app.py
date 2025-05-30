@@ -71,7 +71,6 @@ app.config['SQLALCHEMY_BINDS']={
     'op_excellence':'sqlite:///opexcellence.db',
     'target_columns':'sqlite:///target_columns.db',
     'project_targets':'sqlite:///project_targets.db',
-    'project_targets':'sqlite:///project_targets.db',
     'dmax_approval':'sqlite:///dmax_approval.db'
 }
 db = SQLAlchemy(app) 
@@ -94,18 +93,27 @@ def get_logged_in_user_details():
     if 'username' in session:
         username = session['username']
         user = Employee.query.filter_by(emp_id=username).first()  # Match emp_id with the username
-        if user:
-            normalized_role = normalize_role(user.role)
-            return {"name": user.name, "role": normalized_role,"email":user.email,"actual_role":user.role}
+        # if user:
+        #     normalized_role = normalize_role(user.role)
+        #     return {"name": user.name, "role": normalized_role,"email":user.email,"actual_role":user.role}
 
     # Check if the user logged in with Google Sign-In (using email)
     if 'email' in session:
         email = session['email']
         user = Employee.query.filter_by(email=email).first()  # Match email with the logged-in user's email
-        if user:
-            normalized_role = normalize_role(user.role)
-            return {"name": user.name, "role": normalized_role,"email":user.email,"actual_role":user.role}
+        # if user:
+        #     normalized_role = normalize_role(user.role)
+        #     return {"name": user.name, "role": normalized_role,"email":user.email,"actual_role":user.role}
+    if user:
+        normalized_role = normalize_role(user.role)
+        project = ProjectTargets.query.filter(
+            (ProjectTargets.Lead == user.name) | (ProjectTargets.ApprovalManager == user.name)
+        ).first()
 
+        if project:
+            # Set frequency globally in session
+            session['frequency'] = project.Frequency.lower()
+        return {"name": user.name, "role": normalized_role,"email":user.email,"actual_role":user.role}
     # If no user is found, return None or an appropriate message
     return None
 
@@ -406,6 +414,30 @@ class IndihoodQuality(db.Model):
     communication_value=db.Column(db.Integer)
     app_flow_value=db.Column(db.Integer)
 
+class AuxoQuality(db.Model):    
+    __tablename__ = 'auxo_quality'
+    __bind_key__="dform"
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('login.employee_id'))
+    dform_id = db.Column(db.Integer, db.ForeignKey('login.id'))
+    today_date=db.Column(db.String(100),nullable=False)
+    client_esc_value=db.Column(db.Integer)
+    not_writing_testcase_value=db.Column(db.Integer)
+    invalid_defects_value=db.Column(db.Integer)
+    client_req_value=db.Column(db.Integer)
+    issue_rej_value=db.Column(db.Integer)
+    time_man_value=db.Column(db.Integer)
+    interaction_value=db.Column(db.Integer)
+    test_condn_value=db.Column(db.Integer)
+    gram_incor_value=db.Column(db.Integer)
+    pre_condn_value=db.Column(db.Integer)
+    communication_value=db.Column(db.Integer)
+    regression_value=db.Column(db.Integer)
+    app_flow_value=db.Column(db.Integer)    
+    demo_presentation_value=db.Column(db.Integer)
+    daily_work_value=db.Column(db.Integer)
+    demo_feedback_value=db.Column(db.Integer)
+
 
 # Employee Model
 class Employee(db.Model, UserMixin):
@@ -515,6 +547,49 @@ class Target_columns(db.Model):
     target_year=db.Column(db.String(100))
     status=db.Column(db.String(100))
 
+
+
+class Weekly_Target_Columns(db.Model):
+    __bind_key__="target_columns"
+    __tablename__ = "weekly_target_columns"
+    id = db.Column(db.Integer, primary_key=True)
+    emp_id = db.Column(db.String(100),nullable=False)
+    test_case_creation_target= db.Column(db.Integer)
+    test_case_updation_target=db.Column(db.Integer)
+    test_case_execution_target=db.Column(db.Integer)
+    defects_found_target=db.Column(db.Integer)
+    test_scripts_creation_target=db.Column(db.Integer)
+    test_scripts_updation_target=db.Column(db.Integer)
+    test_scripts_execution_target=db.Column(db.Integer)
+    site_Scrub_target=db.Column(db.Integer)
+    project_doc_target=db.Column(db.Integer)
+    internal_Review_target=db.Column(db.Integer)
+    regression_cycle_target=db.Column(db.Integer)
+    req_anal_target=db.Column(db.Integer)
+    end_cases_exec_target=db.Column(db.Integer)
+    task_coverage_score_target=db.Column(db.Integer)
+    assessment_score_target=db.Column(db.Integer)
+    assessment_re_score_target=db.Column(db.Integer)
+    cert_score_target=db.Column(db.Integer)
+    cert_re_score_target=db.Column(db.Integer)
+    new_features_imp_target=db.Column(db.Integer)
+    defects_fixed_target=db.Column(db.Integer)
+    enhancements_target=db.Column(db.Integer)
+    fig_desgns_target=db.Column(db.Integer)
+    doc_update_target=db.Column(db.Integer)
+    research_target=db.Column(db.Integer)
+    inv_defs=db.Column(db.Integer)
+    spel_errors=db.Column(db.Float)
+    client_esc=db.Column(db.Integer)
+    tst_cases_missing=db.Column(db.Integer)
+    att=db.Column(db.Integer)
+    dtouch=db.Column(db.Integer)
+    new_init=db.Column(db.Integer)
+    defects_verification_target=db.Column(db.Integer)
+    from_date=db.Column(db.Date)
+    to_date=db.Column(db.Date)
+    status=db.Column(db.String(100))
+
 class OperationalExcellence(db.Model):
     __bind_key__="op_excellence"
     
@@ -534,6 +609,8 @@ class ProjectTargets(db.Model):
     Project = db.Column(db.String(100), nullable=False, unique=True)   
     Lead = db.Column(db.String(100), nullable=False)
     ApprovalManager= db.Column(db.String(100), nullable=False)
+    Frequency = db.Column(db.String(20), nullable=False)
+
 
 class DmaxApprovals(db.Model):
     __bind_key__="dmax_approval"
@@ -556,7 +633,8 @@ def load_user(user_id):
 @app.context_processor
 def custom_global_variable():
     role = None
-
+    frequency= None
+    user_name = None
     # Check if the user is logged in (email is in session)
     if 'email' in session:
         user_email = session['email']
@@ -565,16 +643,23 @@ def custom_global_variable():
         user = Employee.query.filter_by(email=user_email).first()
         if user:
             role =normalize_role(user.role)  # Assuming `role` is a column in your User model
-            print("role",role)
+            user_name = user.name
 
-    if 'username' in session :
+    elif 'username' in session :
         username = session['username']
         user = Employee.query.filter_by(emp_id=username).first()
         if user:
             role=normalize_role(user.role)
-            print("role",user)         
+            user_name = user.name
+    if user_name:
+        project = ProjectTargets.query.filter_by(Lead=user_name).first()
+        if project:
+            frequency = project.Frequency   
+            print(frequency)             
     # Return the role to all templates as a global variable
-    return {'user_role': role}
+    return {'user_role': role,
+            'project_frequency': frequency
+            }
 
 @app.template_filter('get_attr')
 def get_attr(obj, attr):
@@ -584,6 +669,8 @@ def get_attr(obj, attr):
 
 
 ###############################################  app routes ###############################################
+
+############### Monthly Form Route ###############
 
 @app.route('/form',methods=["GET","POST"])
 @login_required
@@ -978,7 +1065,31 @@ def home():
                 app_flow_value=request.form.get('app_flow_value')
             )
             db.session.add(indihood_entry)
-
+        if form_data['project'] == 'Auxo':
+            
+            auxo_entry = AuxoQuality(
+                dform_id=new_entry.id,  # Link to that specific Dform row
+                today_date=new_entry.today_date,
+                employee_id=form_data['employee_id'],
+                client_esc_value=request.form.get('auxo_client_esc_value'),
+                not_writing_testcase_value=request.form.get('auxo_not_writing_testcase_value'),
+                invalid_defects_value=request.form.get('auxo_invalid_defects_value'),
+                client_req_value=request.form.get('auxo_client_req_value'),
+                issue_rej_value=request.form.get('auxo_issue_rej_value'),
+                time_man_value=request.form.get('auxo_time_man_value'),
+                interaction_value=request.form.get('auxo_interaction_value'),
+                test_condn_value=request.form.get('auxo_test_condn_value'),
+                gram_incor_value=request.form.get('auxo_gram_incor_value'),
+                pre_condn_value=request.form.get('auxo_pre_condn_value'),
+                communication_value=request.form.get('auxo_communication_value'),
+                regression_value=request.form.get('auxo_regression_value'),
+                app_flow_value=request.form.get('auxo_app_flow_value'),
+                demo_presentation_value=request.form.get('auxo_demo_presentation_value'),
+                daily_work_value=request.form.get('auxo_daily_work_value'),
+                demo_feedback_value=request.form.get('auxo_demo_feedback_value')
+            )
+            print("auxo_entry",auxo_entry)
+            db.session.add(auxo_entry)
         db.session.commit()
 
         flash("Form submitted sucessfully!","success")
@@ -986,7 +1097,13 @@ def home():
         return redirect(url_for('home'))
     return render_template('index.html',role=role)
 
-  
+############### Weekly Form Route ###############
+
+@app.route('/weekly_form',methods=["GET","POST"])
+@login_required
+@role_required("manager","ad_m")
+def weekly_form():
+    return "hello"  
     
 @app.route('/',methods=["GET","POST"])
 def sign():
@@ -1863,6 +1980,23 @@ def view_dscore():
                     total_pre_condn_value = 0
                     total_communication_value = 0
                     total_app_flow_value = 0
+                elif emp.emp_project == "Auxo":
+                    total_client_esc_value = 0
+                    total_not_writing_testcase_value = 0
+                    total_invalid_defects_value = 0
+                    total_client_req_value = 0
+                    total_issue_rej_value = 0
+                    total_time_man_value = 0
+                    total_interaction_value = 0
+                    total_test_condn_value = 0
+                    total_gram_incor_value = 0
+                    total_pre_condn_value = 0
+                    total_communication_value = 0
+                    total_regression_value = 0
+                    total_app_flow_value = 0
+                    total_demo_presentation_value = 0
+                    total_daily_work_value = 0
+                    total_demo_feedback_value = 0    
                 else:    
                     total_inv_defs = 0
                     total_spel_errors = 0
@@ -1894,6 +2028,28 @@ def view_dscore():
                         total_pre_condn_value += quality_entry.pre_condn_value or 0
                         total_communication_value += quality_entry.communication_value or 0
                         total_app_flow_value += quality_entry.app_flow_value or 0
+                elif emp.emp_project == "Auxo":
+                    joined_matched_employees = matched_employees.join(
+                            AuxoQuality, Dform.id == AuxoQuality.dform_id
+                        ).add_entity(AuxoQuality)
+                    for dform_entry, quality_entry in joined_matched_employees.all():
+                           
+                        total_client_esc_value += quality_entry.client_esc_value or 0
+                        total_not_writing_testcase_value += quality_entry.not_writing_testcase_value or 0
+                        total_invalid_defects_value += quality_entry.invalid_defects_value or 0
+                        total_client_req_value += quality_entry.client_req_value or 0
+                        total_issue_rej_value += quality_entry.issue_rej_value or 0
+                        total_time_man_value += quality_entry.time_man_value or 0
+                        total_interaction_value += quality_entry.interaction_value or 0
+                        total_test_condn_value += quality_entry.test_condn_value or 0
+                        total_gram_incor_value += quality_entry.gram_incor_value or 0
+                        total_pre_condn_value += quality_entry.pre_condn_value or 0
+                        total_communication_value += quality_entry.communication_value or 0
+                        total_regression_value +=quality_entry.regression_value or 0
+                        total_demo_presentation_value +=quality_entry.demo_presentation_value or 0
+                        total_daily_work_value +=quality_entry.daily_work_value or 0
+                        total_demo_feedback_value +=quality_entry.demo_feedback_value or 0  
+                        total_app_flow_value += quality_entry.app_flow_value or 0        
                 else:
                     for entry in matched_employees.all():
                         
@@ -1932,7 +2088,37 @@ def view_dscore():
                         final_quality = 0  
                     else:        
                         final_quality = final_quality *prod_multiplier / 100
-
+                elif emp.emp_project == "Auxo":
+                    deductions = (
+                        total_not_writing_testcase_value +
+                        total_invalid_defects_value + total_client_req_value +
+                        total_issue_rej_value + total_time_man_value +
+                        total_interaction_value + total_test_condn_value +
+                        total_gram_incor_value + total_pre_condn_value +
+                        total_communication_value + total_regression_value+
+                        total_demo_presentation_value +total_daily_work_value+ 
+                        total_demo_feedback_value+total_app_flow_value
+                        
+                    )
+                    if  total_client_esc_value > 0:
+                        final_quality = 0
+                    else:    
+                        final_quality = 98 - deductions
+                    print(final_quality)    
+                    all_matched = matched_employees.all()
+                    if all_matched:
+                        corrected_designation = corrections.get(all_matched[0].designation, all_matched[0].designation)
+                    else:
+                        # No matched employees, handle safely
+                        corrected_designation = None
+                    if corrected_designation == "Intern":
+                        prod_multiplier=50
+                    else:
+                        prod_multiplier = 40    
+                    if has_client_escalation:
+                        final_quality = 0  
+                    else:        
+                        final_quality = final_quality *prod_multiplier / 100
                 else:
                     final_quality = 98 - (total_inv_defs + total_spel_errors + total_client_esc + total_tst_cases_missing)
                     initial_quality=final_quality  
@@ -2199,6 +2385,23 @@ def view_dscore():
                     total_pre_condn_value = 0
                     total_communication_value = 0
                     total_app_flow_value = 0
+                elif emp.emp_project == "Auxo":
+                    total_client_esc_value = 0
+                    total_not_writing_testcase_value = 0
+                    total_invalid_defects_value = 0
+                    total_client_req_value = 0
+                    total_issue_rej_value = 0
+                    total_time_man_value = 0
+                    total_interaction_value = 0
+                    total_test_condn_value = 0
+                    total_gram_incor_value = 0
+                    total_pre_condn_value = 0
+                    total_communication_value = 0
+                    total_regression_value = 0
+                    total_app_flow_value = 0
+                    total_demo_presentation_value = 0
+                    total_daily_work_value = 0
+                    total_demo_feedback_value = 0      
                 else:    
                     total_inv_defs = 0
                     total_spel_errors = 0
@@ -2543,6 +2746,9 @@ def full_table_view(id):
     if project == "Indihood":
         filtered_query = filtered_query.outerjoin(IndihoodQuality, Dform.id == IndihoodQuality.dform_id)
         filtered_query = filtered_query.add_entity(IndihoodQuality)
+    if project == "Auxo":
+        filtered_query = filtered_query.outerjoin(AuxoQuality, Dform.id == AuxoQuality.dform_id)
+        filtered_query = filtered_query.add_entity(AuxoQuality)
     employee = filtered_query.all() 
     if project == "Indihood":
         for dform, quality in employee:
@@ -2950,6 +3156,29 @@ def full_table_view(id):
             # ,"Dmax_score",new_init
             # "quality", "attendance", "skill",  
         ]
+    if project == "Auxo":
+        ALLOWED_COLUMNS = [
+            "employee_name", "today_date", "test_case_creation_target",
+            "test_case_creation_actual", "test_case_updation_target", "test_case_updation_actual",
+            "test_case_execution_target", "test_case_execution_actual", "defects_found_target",
+            "defects_found_actual","defects_verification_target", "defects_verification_actual", "test_scripts_creation_target", "test_scripts_creation_actual",
+            "test_scripts_execution_target","test_scripts_execution_actual","test_scripts_updation_target", "test_scripts_updation_actual",
+            "project_doc_target","project_doc_actual","internal_Review_target", "internal_Review_actual",
+            
+            "regression_cycle_target","regression_cycle_actual","req_anal_target", "req_anal_actual",
+            "end_cases_exec_target","end_cases_exec_actual","site_Scrub_target", "site_Scrub_actual",
+            "task_coverage_score_target", "task_coverage_score_actual","assessment_score_target", "assessment_score_actual",
+            "assessment_re_score_target","assessment_re_score_actual","cert_score_target", "cert_score_actual","cert_re_score_target","cert_re_score_actual",
+            "new_features_imp_target", "new_features_imp_actual","defects_fixed_target", "defects_fixed_actual",
+            "enhancements_target", "enhancements_actual", "fig_desgns_target", "fig_desgns_actual","doc_update_target", "doc_update_actual",
+            "research_target", "research_actual",
+            "att","skill","new_initiatives",
+            "target","actual","production","quality","attendance","skill","new_initiatives","Dmax_score"
+                
+            # #     
+            # ,"Dmax_score",new_init
+            # "quality", "attendance", "skill",  
+        ]    
     core_columns = [
         "employee_name", "today_date","inv_defs",  "spel_errors",  "client_esc", "tst_cases_missing","att","skill","new_initiatives",
           "target","actual","production","quality","attendance","skill","new_initiatives","Dmax_score"
@@ -2973,6 +3202,29 @@ def full_table_view(id):
             "Communication": None,
             "Overall understanding of app flow": None
         }
+    if project == "Auxo":
+        core_columns = [
+            "employee_name", "today_date","att","skill","new_initiatives",
+            "target","actual","production","quality","attendance","skill","new_initiatives","Dmax_score"
+        ]
+        TABLE_HEADERS["Quality"] = {
+            "Client escalation": None,
+            "Not writing testcases": None,
+            "Invalid defects": None,
+            "Client's requirement not well understood": None,
+            "Issue rejected internally before raising": None,
+            "Time management": None,
+            "Interactions in meetings": None,
+            "Testcondition/ Test scenario missing": None,
+            "Grammer incorrect": None,
+            "Precondition missing": None,
+            "Communication": None,
+            "No Regression testing": None,
+            "Overall understanding of app flow": None,
+            "Demo presentation": None,
+            "Daily work quality": None,
+            "Demo Feedback work": None
+        }    
     filtered_columns = []
     for column in ALLOWED_COLUMNS:
         if column in core_columns:
@@ -3693,6 +3945,7 @@ def delete_employee_data():
     if not ids_to_delete:
         return jsonify({"success": False, "message": "No IDs received"})    
     IndihoodQuality.query.filter(IndihoodQuality.dform_id.in_(ids_to_delete)).delete(synchronize_session=False)
+    AuxoQuality.query.filter(AuxoQuality.dform_id.in_(ids_to_delete)).delete(synchronize_session=False)
     Dform.query.filter(Dform.id.in_(ids_to_delete)).delete()
     db.session.commit()
     return jsonify({"success": True})
@@ -4076,6 +4329,92 @@ def targets_bulk_upload():
 
         return redirect(url_for('targets_bulk_upload'))
 
+    return render_template('targets_bulk_upload.html')
+
+@app.route('/weekly_targets_bulk_upload',methods=['GET', 'POST'])
+def weekly_targets_bulk_upload():
+    column_mapping = {
+        "Emp_ID": "emp_id",
+        "Date From":"from_date",
+        "Date To":"to_date",
+        "Test Case Creation Target": "test_case_creation_target",
+        "Test Case Updation Target": "test_case_updation_target",
+        "Test Case Execution Target": "test_case_execution_target",
+        "Defects Found Target": "defects_found_target",
+        "Test Scripts Creation Target": "test_scripts_creation_target",
+        "Test Scripts Updation Target": "test_scripts_updation_target",
+        "Test Scripts Execution Target": "test_scripts_execution_target",
+        "Site Scrub Target": "site_Scrub_target",
+        "Project Doc Target": "project_doc_target",
+        "Internal Review Target": "internal_Review_target",
+        "Regression Cycle Target": "regression_cycle_target",
+        "Requirement Analysis Target": "req_anal_target",
+        "End Cases Execution Target": "end_cases_exec_target",
+        "Task Coverage Score Target": "task_coverage_score_target",
+        "Assessment Score Target": "assessment_score_target",
+        "Assessment Re-score Target": "assessment_re_score_target",
+        "Certification Score Target": "cert_score_target",
+        "Certification Re-score Target": "cert_re_score_target",
+        "New Features Implementation Target": "new_features_imp_target",
+        "Defects Fixed Target": "defects_fixed_target",
+        "Enhancements Target": "enhancements_target",
+        "Figma Designs Target": "fig_desgns_target",
+        "Documentation Update Target": "doc_update_target",
+        "Research Target": "research_target",
+        "Invalid Defects": "inv_defs",
+        "Spelling Errors": "spel_errors",
+        "Client Escapes": "client_esc",
+        "Test Cases Missing": "tst_cases_missing",
+        "Attendance": "att",
+        "Double Touches": "dtouch",
+        "New Initiatives": "new_init",
+        "Issue Verification Target": "defects_verification_target",
+        "Status": "status"
+    }
+    
+    if request.method == 'POST':
+        file=request.files.get('file')
+        if not file:
+            flash('No file uploaded!', 'danger')
+            return redirect(request.url)
+        wb=load_workbook(file)
+        sheet=wb.active
+        headers = [str(cell.value).strip() if cell.value else '' for cell in next(sheet.iter_rows(min_row=1, max_row=1))]
+        print("Headers:", headers)
+        mapped_headers = [column_mapping.get(header,None) for header in headers]
+        for row in sheet.iter_rows(min_row=2, values_only=True):
+            if not any(row):
+                print(f"Skipping completely empty row ")
+                continue  # Skip rows where all values are None
+
+            data={}
+            for idx,value in enumerate(row):
+                field=mapped_headers[idx]
+                print(field)
+                if field:
+                    if field in ["from_date", "to_date"]:
+                        # Convert Excel date to Python date
+                        if isinstance(value, datetime):
+                            data[field] = value.date()
+                        elif isinstance(value, str):
+                            try:
+                                data[field] = datetime.strptime(value, "%Y-%m-%d").date()
+                            except ValueError:
+                                flash(f"Invalid date format for {field} in row {row}. Expected DD-MM-YYYY.", "danger")
+                                continue
+                        else:
+                            flash(f"Invalid date format for {field} in row {row}. Expected DD-MM-YYYY.", "danger")   
+                    else:
+                        data[field] = value
+            try:
+                target = Weekly_Target_Columns(**data)
+                db.session.add(target)
+            except Exception as e:
+                flash(f"Error adding row: {e}", "danger")
+
+        db.session.commit()
+        flash("Weekly targets uploaded successfully!", "success")
+        return redirect(request.url)                     
     return render_template('targets_bulk_upload.html')
 with app.app_context():
         
