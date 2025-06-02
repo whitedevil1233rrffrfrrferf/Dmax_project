@@ -45,10 +45,15 @@
                         <option value="{{ designation }}" {% if employee.emp_designation == designation or employee.emp_designation.replace(' ', '').replace('.', '') == designation %} selected {% endif %}>{{ designation }}</option>
                     {% endfor %}
                 </select>
+            </div> 
+            <div class="mb-3">
+                <label for="reporting_manager" class="form-label">Lead/Spocs</label>
+               <input type="text" class="form-control" id="reporting_manager" name="reporting_manager" value="{{ employee.reporting_manager }}">
+                </select>
             </div>  
             <div class="mb-3">
-                <label for="emp_id" class="form-label">Reporting manager</label>
-                <input type="text" class="form-control" id="rep_manager" name="rep_manager" value="{{ employee.actual_reporting_manager }}">
+                <label for="actual_reporting_manager" class="form-label">Approval manager</label>
+                <input type="text" class="form-control" id="actual_reporting_manager" name="actual_reporting_manager" value="{{ employee.actual_reporting_manager }}">
             </div>
             
             <div style="display: flex; margin-left: 30%; gap: 4rem;">

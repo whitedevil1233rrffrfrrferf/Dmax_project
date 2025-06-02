@@ -1103,7 +1103,426 @@ def home():
 @login_required
 @role_required("manager","ad_m")
 def weekly_form():
-    return "hello"  
+    if 'username' in session :
+        username = session['username']
+        employee = Employee.query.filter_by(emp_id=username).first()
+        if employee:
+            role = employee.role
+            
+    elif 'email' in session:
+        email=session['email']
+        employee=Employee.query.filter_by(email=email).first()
+        if employee:
+            role=employee.role
+                              
+    else:
+       
+        return redirect(url_for('sign'))
+        
+
+    if request.method=="POST":
+        
+        workbook = load_workbook(excel_path)
+        sheet = workbook.active
+        
+        next_row = find_next_available_row(sheet)
+         
+        field_to_column = {
+            "employee_name": 'A',
+            "employee_id": 'B',
+            "employee_email": 'C',
+            "today_date": 'D',
+            "project": 'E',
+            "designation": 'F',
+            "test_case_creation_target": 'G',
+            "test_case_creation_actual": 'H',
+            "test_case_updation_target": 'I',
+            "test_case_updation_actual": 'J',
+            "test_case_execution_target": 'K',
+            "test_case_execution_actual": 'L',
+            "defects_found_target":'M',
+            "defects_found_actual":'N',
+            "defects_verification_target":'O',
+            "defects_verification_actual":'P',
+            "test_scripts_creation_target":'Q',
+            "test_scripts_creation_actual":'R',
+            "test_scripts_updation_target":'S',
+            "test_scripts_updation_actual":'T',
+            "test_scripts_execution_target":'U',
+            "test_scripts_execution_actual":'V',
+            "site_Scrub_target":'AG',
+            "site_Scrub_actual":'AH',
+            "project_doc_target":'W',
+            "project_doc_actual":'X',
+            "internal_Review_target":'Y',
+            "internal_Review_actual":'Z',
+            "regression_cycle_target":'AA',
+            "regression_cycle_actual":'AB',
+            "req_anal_target":'AC',
+            "req_anal_actual":'AD',
+            "end_cases_exec_target":'AE',
+            "end_cases_exec_actual":'AF',
+            "task_coverage_score_target":'AI',
+            "task_coverage_score_actual":'AJ',
+            "assessment_score_target":'AK',
+            "assessment_score_actual":'AL',
+            "assessment_re_score_target":'AM',
+            "assessment_re_score_actual":'AN',
+            "cert_score_target":"AO",
+            "cert_score_actual":'AP',
+            "cert_re_score_target":'AQ',
+            "cert_re_score_actual":'AR',
+            "new_features_imp_target":'AS',
+            "new_features_imp_actual":'AT',
+            "defects_fixed_target":'AU',
+            "defects_fixed_actual":'AV',
+            "enhancements_target":'AW',
+            "enhancements_actual":'AX',
+            "fig_desgns_target":'AY',
+            "fig_desgns_actual":'AZ',
+            "doc_update_target":'BA',
+            "doc_update_actual":'BB',
+            "research_target":'BC',
+            "research_actual":'BD',
+            "inv_defs":'BE',
+            "spel_errors":'BF',
+            "client_esc":'BG',
+            "tst_cases_missing":'BH',
+            "att":'BI',
+            "dtouch":'BJ',
+            "new_init":'BK',    
+        }
+        form_data = {}
+        Indihood_weights = {
+            'client_esc_value': 0,
+            'not_writing_testcase_value': 10,
+            'invalid_defects_value': 2,
+            'client_req_value': 4,
+            'issue_rej_value': 0.5,
+            'time_man_value': 3,
+            'interaction_value': 3,
+            'test_condn_value': 1,
+            'gram_incor_value': 0.10,
+            'pre_condn_value': 0.2,
+            'communication_value': 3,
+            'app_flow_value': 3
+        }
+        def get_weighted_value(field):
+            value = request.form.get(field)
+            return round((int(value) * Indihood_weights[field]) / 100, 2) if value else 0
+        row_values = []
+        for field, column in field_to_column.items():
+            value = request.form.get(field)
+            value = value.strip() if value else ''
+            if value and value.replace('.', '', 1).isdigit():
+                value = float(value)
+            form_data[field] = value
+            # sheet[f'{column}{next_row}'] = value
+            # row_values.append(value)
+        # dictionary for mapping actual to target    
+        actual_to_target_mapping = {}
+
+        for key in field_to_column.keys():
+            if key.endswith('_actual'):
+                target_key = key.replace('_actual', '_target')  # Replace '_actual' with '_target'
+                if target_key in field_to_column:  # Check if target_key exists
+                    actual_to_target_mapping[key] = target_key   
+        
+        results = {}
+        employee_id = form_data['employee_id']
+        employee_email = form_data['employee_email']
+        existing_employee = Employee_information.query.filter_by(
+            emp_id=employee_id,
+            emp_email=employee_email
+        ).first()
+        if not existing_employee:
+            flash("Employee does not exist.", "error")
+            return redirect(request.url)
+            
+        form_today_date = datetime.strptime(form_data['today_date'], '%Y-%m-%d')
+        existing_entry = Dform.query.filter_by(today_date=form_data['today_date'], employee_email=form_data['employee_email']).first()
+        if existing_entry:
+            
+            flash("An entry for this date already exists!", "warning")
+            return redirect(request.referrer)
+        month = form_today_date.month
+        previous_month = month - 1 if month > 1 else 12
+        month_str=str(month).zfill(2)
+        previous_month_str = str(previous_month).zfill(2)
+        first_entry = not db.session.query(Dform).filter_by(employee_id=employee_id).first()
+        form_today_date = datetime.strptime(form_data['today_date'], '%Y-%m-%d')
+        month = form_today_date.month
+        year = form_today_date.year
+        previous_month = month - 1 if month > 1 else 12
+        previous_year = year if month > 1 else year - 1
+        if first_entry:
+            # If first entry, only allow submission for the current month
+            if month != datetime.today().month or year != datetime.today().year:
+                flash("You can only submit the form for the current month as this is your first entry.", "error")
+                return redirect(request.referrer)
+        else:
+            if month > 1:
+                previous_month = month-1 
+                previous_year = year
+                previous_form = db.session.query(Dform).filter(
+                    Dform.employee_id == form_data['employee_id'],
+                    Dform.today_date.startswith(f"{previous_year}-{str(previous_month).zfill(2)}")  # format: YYYY-MM
+                ).first()
+                
+                if previous_form:
+                    previous_approval = db.session.query(DmaxApprovals).filter_by(
+                        employee_email=form_data['employee_id'],
+                        approved_month=previous_month,
+                        approved_year=previous_year,
+                        status="Approved"
+                    ).first()
+
+                    if not previous_approval:
+                        flash(f"Please get {monthsDict[str(previous_month).zfill(2)]}'s data approved before proceeding.", "error")
+                        return redirect(request.referrer)
+            # if month != datetime.today().month or year != datetime.today().year:
+            #     first_entry= db.session.query(DmaxApprovals).filter_by(
+            #             employee_email=form_data['employee_id'],
+            #             status="Approved"
+            #         ).first()
+            #     if month > 1:
+
+            #         previous_approval = db.session.query(DmaxApprovals).filter_by(
+            #             employee_email=form_data['employee_id'],
+            #             approved_month=previous_month,
+            #             approved_year=previous_year,
+            #             status="Approved"
+            #         ).first()
+            #         if not previous_approval:
+            #             flash(f"Please get {monthsDict[previous_month_str]}'s data approved before proceeding.", "error")
+            #             return redirect(request.referrer)
+        # if not first_entry and not has_previous_month_entry(employee_id,month):
+        #     flash(f"Please complete current month before proceeding to {monthsDict[month_str]}", "error")
+        #     return redirect(request.referrer)
+        designation = form_data.get("designation", "")
+        attendance_input = form_data.get("att", 0)
+        if designation == "Intern":
+            attendance = int((attendance_input * 10 / 100) * 100)
+        elif designation == "Jr.QA Engineer":
+            attendance = int((attendance_input * 10 / 100) * 100)
+        elif designation == "QA Engineer":   
+            attendance = int((attendance_input * 5 / 100) * 100) 
+        elif designation=="Sr.QA Engineer":
+            attendance = int((attendance_input * 5 / 100) * 100)
+        elif designation=="QA Lead":
+            attendance = int((attendance_input * 5 / 100) * 100)  
+        else:
+            attendance = 0    
+        results['BP'] = attendance      
+        # Initialize the 'BL' sum as 0
+        operational_excellence=OperationalExcellence.query.filter_by(emp_id=form_data["employee_id"]).first()
+        if operational_excellence and operational_excellence.start_date and operational_excellence.end_date:
+            start_date = datetime.strptime(operational_excellence.start_date, "%Y-%m-%d")
+            end_date = datetime.strptime(operational_excellence.end_date, "%Y-%m-%d")
+            
+            # Convert form_data['today_date'] to a datetime object
+            today_date = datetime.strptime(form_data['today_date'], "%Y-%m-%d")
+            if start_date <= today_date <= end_date:
+
+            # results['BP']=operational_excellence.attendance_score
+                results['BQ'] = operational_excellence.dtouch_score
+                results['BR'] = operational_excellence.new_init_score
+                print("startdate",start_date, "enddate",end_date,"today_date",today_date)
+            else:
+                  results['BQ'] = 0
+                  results['BR'] = 0  
+        else:
+            # results['BP']=0   
+            results['BQ'] = 0
+            results['BR'] = 0 
+            
+        results['BL'] = 0
+        results['BM'] = 0
+        # Loop through the actual-to-target mapping and apply the formula
+        for actual_field, target_field in actual_to_target_mapping.items():
+            if form_data[actual_field] > 0:
+                results['BL'] +=int(form_data[target_field])
+                results['BM'] += int(form_data[actual_field])  
+        if results['BM'] != 0 and results['BL'] != 0:  # Check if both BM and BL are not zero
+            if designation == "Intern":
+                results['BN'] = ((results['BM'] / results['BL']) * 30 / 100) * 100
+            elif designation == "Sr.QA Engineer":
+                results['BN'] = ((results['BM'] / results['BL']) * 30 / 100) * 100
+            elif designation == "Jr.QA Engineer":
+                results['BN'] = ((results['BM'] / results['BL']) * 40 / 100) * 100
+            elif designation == "QA Engineer":
+                results['BN'] = ((results['BM'] / results['BL']) * 35 / 100) * 100
+            elif designation == "QA Lead":
+                results['BN'] = ((results['BM'] / results['BL']) * 20 / 100) * 100
+            else:
+                results['BN'] = 0 
+        else:
+            results['BN'] = 0     
+        if form_data['client_esc'] == 1:  # Check if BG (Client Escalations) is 1
+            results['BO'] = 0  # Set BO to 0 if BG is 1
+        else:
+            if results['BN']==0:
+                results['BO']=0
+            else:    
+                sum_invalid_defects_to_test_cases = (
+                    form_data['inv_defs'] +  # BE: Invalid Defects
+                    form_data['spel_errors'] +  # BF: Spelling Errors
+                    form_data['client_esc'] +  # BG: Client Escalations
+                    form_data['tst_cases_missing']  # BH: Test Cases Missing
+                )       
+                results['BO'] = ((100 - sum_invalid_defects_to_test_cases) * 0.4 / 100) * 100
+            # results['BP'] = int((form_data['att'] * 1 * 10 / 100) * 100) 
+            # results['BP']=0
+            # results['BQ'] = int(((form_data['dtouch'] * 10 / 100 / 100) * 100)*100)
+            # results['BQ'] = 0
+            # results['BR'] =int(((form_data['new_init'] * 10 / 100 / 100) * 100)*100)  
+            # results['BR'] = 0   
+        results['BS'] = sum(
+                            results[key] for key in [ 'BN', 'BO', 'BP', 'BQ', 'BR']
+                            )       
+
+        if results['BP']==0:
+            results['BL']=request.form.get('target')
+            results['BN']=0
+            results['BO']=0
+            results['BS']=0
+            results['BQ']=0
+            results['BR']=0
+
+        
+            
+
+        new_entry = Dform(
+            employee_name=form_data['employee_name'],
+            employee_id=form_data['employee_id'],
+            employee_email=form_data['employee_email'],
+            today_date=form_data['today_date'],
+            project=form_data['project'],
+            designation=form_data['designation'],
+            test_case_creation_target=form_data.get('test_case_creation_target'),
+            test_case_creation_actual=form_data.get('test_case_creation_actual'),
+            test_case_updation_target=form_data.get('test_case_updation_target'),
+            test_case_updation_actual=form_data.get('test_case_updation_actual'),
+            test_case_execution_target=form_data.get('test_case_execution_target'),
+            test_case_execution_actual=form_data.get('test_case_execution_actual'),
+            defects_found_target=form_data.get('defects_found_target'),
+            defects_found_actual=form_data.get('defects_found_actual'),
+            test_scripts_creation_target=form_data.get('test_scripts_creation_target'),
+            test_scripts_creation_actual=form_data.get('test_scripts_creation_actual'),
+            test_scripts_updation_target=form_data.get('test_scripts_updation_target'),
+            test_scripts_updation_actual=form_data.get('test_scripts_updation_actual'),
+            test_scripts_execution_target=form_data.get('test_scripts_execution_target'),
+            test_scripts_execution_actual=form_data.get('test_scripts_execution_actual'),
+            site_Scrub_target=form_data.get('site_Scrub_target'),
+            site_Scrub_actual=form_data.get('site_Scrub_actual'),
+            project_doc_target=form_data.get('project_doc_target'),
+            project_doc_actual=form_data.get('project_doc_actual'),
+            internal_Review_target=form_data.get('internal_Review_target'),
+            internal_Review_actual=form_data.get('internal_Review_actual'),
+            regression_cycle_target=form_data.get('regression_cycle_target'),
+            regression_cycle_actual=form_data.get('regression_cycle_actual'),
+            req_anal_target=form_data.get('req_anal_target'),
+            req_anal_actual=form_data.get('req_anal_actual'),
+            end_cases_exec_target=form_data.get('end_cases_exec_target'),
+            end_cases_exec_actual=form_data.get('end_cases_exec_actual'),
+            task_coverage_score_target=form_data.get('task_coverage_score_target'),
+            task_coverage_score_actual=form_data.get('task_coverage_score_actual'),
+            assessment_score_target=form_data.get('assessment_score_target'),
+            assessment_score_actual=form_data.get('assessment_score_actual'),
+            assessment_re_score_target=form_data.get('assessment_re_score_target'),
+            assessment_re_score_actual=form_data.get('assessment_re_score_actual'),
+            cert_score_target=form_data.get('cert_score_target'),
+            cert_score_actual=form_data.get('cert_score_actual'),
+            cert_re_score_target=form_data.get('cert_re_score_target'),
+            cert_re_score_actual=form_data.get('cert_re_score_actual'),
+            new_features_imp_target=form_data.get('new_features_imp_target'),
+            new_features_imp_actual=form_data.get('new_features_imp_actual'),
+            defects_fixed_target=form_data.get('defects_fixed_target'),
+            defects_fixed_actual=form_data.get('defects_fixed_actual'),
+            defects_verification_target=form_data.get('defects_verification_target'),
+            defects_verification_actual=form_data.get('defects_verification_actual'),
+            enhancements_target=form_data.get('enhancements_target'),
+            enhancements_actual=form_data.get('enhancements_actual'),
+            fig_desgns_target=form_data.get('fig_desgns_target'),
+            fig_desgns_actual=form_data.get('fig_desgns_actual'),
+            doc_update_target=form_data.get('doc_update_target'),
+            doc_update_actual=form_data.get('doc_update_actual'),
+            research_target=form_data.get('research_target'),
+            research_actual=form_data.get('research_actual'),
+            inv_defs=form_data.get('inv_defs'),
+            spel_errors=form_data.get('spel_errors'),
+            client_esc=form_data.get('client_esc'),
+            tst_cases_missing=form_data.get('tst_cases_missing'),
+            att=form_data.get('att'),
+            dtouch=form_data.get('dtouch'),
+            new_init=form_data.get('new_init'),
+            target=results['BL'],
+            actual=results['BM'],
+            production=results['BN'],
+            quality=results['BO'],
+            
+            # Attendance (BO) and Skill (BP)
+            attendance=results['BP'],
+            skill=results['BQ'],
+            
+            # New Initiatives (BQ) and Dmax Score (BS)
+            new_initiatives=results['BR'],
+            Dmax_score=results['BS'],
+        )
+        
+        # Add to DB and commit the session
+        db.session.add(new_entry)
+        db.session.flush()
+        if form_data['project'] == 'Indihood':
+            indihood_entry = IndihoodQuality(
+                dform_id=new_entry.id,  # Link to that specific Dform row
+                today_date=new_entry.today_date,
+                employee_id=form_data['employee_id'],
+                client_esc_value=request.form.get('client_esc_value'),
+                not_writing_testcase_value=request.form.get('not_writing_testcase_value'),
+                invalid_defects_value=request.form.get('invalid_defects_value'),
+                client_req_value=request.form.get('client_req_value'),
+                issue_rej_value=request.form.get('issue_rej_value'),
+                time_man_value=request.form.get('time_man_value'),
+                interaction_value=request.form.get('interaction_value'),
+                test_condn_value=request.form.get('test_condn_value'),
+                gram_incor_value=request.form.get('gram_incor_value'),
+                pre_condn_value=request.form.get('pre_condn_value'),
+                communication_value=request.form.get('communication_value'),
+                app_flow_value=request.form.get('app_flow_value')
+            )
+            db.session.add(indihood_entry)
+        if form_data['project'] == 'Auxo':
+            
+            auxo_entry = AuxoQuality(
+                dform_id=new_entry.id,  # Link to that specific Dform row
+                today_date=new_entry.today_date,
+                employee_id=form_data['employee_id'],
+                client_esc_value=request.form.get('auxo_client_esc_value'),
+                not_writing_testcase_value=request.form.get('auxo_not_writing_testcase_value'),
+                invalid_defects_value=request.form.get('auxo_invalid_defects_value'),
+                client_req_value=request.form.get('auxo_client_req_value'),
+                issue_rej_value=request.form.get('auxo_issue_rej_value'),
+                time_man_value=request.form.get('auxo_time_man_value'),
+                interaction_value=request.form.get('auxo_interaction_value'),
+                test_condn_value=request.form.get('auxo_test_condn_value'),
+                gram_incor_value=request.form.get('auxo_gram_incor_value'),
+                pre_condn_value=request.form.get('auxo_pre_condn_value'),
+                communication_value=request.form.get('auxo_communication_value'),
+                regression_value=request.form.get('auxo_regression_value'),
+                app_flow_value=request.form.get('auxo_app_flow_value'),
+                demo_presentation_value=request.form.get('auxo_demo_presentation_value'),
+                daily_work_value=request.form.get('auxo_daily_work_value'),
+                demo_feedback_value=request.form.get('auxo_demo_feedback_value')
+            )
+            print("auxo_entry",auxo_entry)
+            db.session.add(auxo_entry)
+        db.session.commit()
+
+        flash("Form submitted sucessfully!","success")
+        
+        return redirect(url_for('home'))
+    return render_template('weekly_form.html',role=role)  
     
 @app.route('/',methods=["GET","POST"])
 def sign():
@@ -1353,7 +1772,8 @@ def edit_employee(employee_id):
         employee.emp_email = request.form['emp_email']
         employee.emp_project = request.form['emp_project']
         employee.emp_designation = corrections.get(request.form['emp_designation'], request.form['emp_designation'])
-        employee.reporting_manager=request.form['rep_manager']
+        employee.reporting_manager = request.form['reporting_manager']  # Lead/Spocs
+        employee.actual_reporting_manager = request.form['actual_reporting_manager']
         # Save the updated data back to the database
         
         db.session.commit()
@@ -1967,41 +2387,41 @@ def view_dscore():
             is_actual_manager = False
             filtered_employees=[]
             for emp in employees_under_manager:
-                if emp.emp_project == "Indihood":
-                    total_client_esc_value = 0
-                    total_not_writing_testcase_value = 0
-                    total_invalid_defects_value = 0
-                    total_client_req_value = 0
-                    total_issue_rej_value = 0
-                    total_time_man_value = 0
-                    total_interaction_value = 0
-                    total_test_condn_value = 0
-                    total_gram_incor_value = 0
-                    total_pre_condn_value = 0
-                    total_communication_value = 0
-                    total_app_flow_value = 0
-                elif emp.emp_project == "Auxo":
-                    total_client_esc_value = 0
-                    total_not_writing_testcase_value = 0
-                    total_invalid_defects_value = 0
-                    total_client_req_value = 0
-                    total_issue_rej_value = 0
-                    total_time_man_value = 0
-                    total_interaction_value = 0
-                    total_test_condn_value = 0
-                    total_gram_incor_value = 0
-                    total_pre_condn_value = 0
-                    total_communication_value = 0
-                    total_regression_value = 0
-                    total_app_flow_value = 0
-                    total_demo_presentation_value = 0
-                    total_daily_work_value = 0
-                    total_demo_feedback_value = 0    
-                else:    
-                    total_inv_defs = 0
-                    total_spel_errors = 0
-                    total_client_esc = 0
-                    total_tst_cases_missing = 0
+                
+                total_client_esc_value = 0
+                total_not_writing_testcase_value = 0
+                total_invalid_defects_value = 0
+                total_client_req_value = 0
+                total_issue_rej_value = 0
+                total_time_man_value = 0
+                total_interaction_value = 0
+                total_test_condn_value = 0
+                total_gram_incor_value = 0
+                total_pre_condn_value = 0
+                total_communication_value = 0
+                total_app_flow_value = 0
+                
+                total_client_esc_value = 0
+                total_not_writing_testcase_value = 0
+                total_invalid_defects_value = 0
+                total_client_req_value = 0
+                total_issue_rej_value = 0
+                total_time_man_value = 0
+                total_interaction_value = 0
+                total_test_condn_value = 0
+                total_gram_incor_value = 0
+                total_pre_condn_value = 0
+                total_communication_value = 0
+                total_regression_value = 0
+                total_app_flow_value = 0
+                total_demo_presentation_value = 0
+                total_daily_work_value = 0
+                total_demo_feedback_value = 0    
+                   
+                total_inv_defs = 0
+                total_spel_errors = 0
+                total_client_esc = 0
+                total_tst_cases_missing = 0
                 matched_employees = get_first_filtered_employees(
                     Dform.query.filter_by(employee_email=emp.emp_email),
                     search_query,
@@ -2372,43 +2792,29 @@ def view_dscore():
             filtered_employees = []
             has_client_escalation= False
             for emp in employees_under_manager:
-                if emp.emp_project == "Indihood":
-                    total_client_esc_value = 0
-                    total_not_writing_testcase_value = 0
-                    total_invalid_defects_value = 0
-                    total_client_req_value = 0
-                    total_issue_rej_value = 0
-                    total_time_man_value = 0
-                    total_interaction_value = 0
-                    total_test_condn_value = 0
-                    total_gram_incor_value = 0
-                    total_pre_condn_value = 0
-                    total_communication_value = 0
-                    total_app_flow_value = 0
-                elif emp.emp_project == "Auxo":
-                    total_client_esc_value = 0
-                    total_not_writing_testcase_value = 0
-                    total_invalid_defects_value = 0
-                    total_client_req_value = 0
-                    total_issue_rej_value = 0
-                    total_time_man_value = 0
-                    total_interaction_value = 0
-                    total_test_condn_value = 0
-                    total_gram_incor_value = 0
-                    total_pre_condn_value = 0
-                    total_communication_value = 0
-                    total_regression_value = 0
-                    total_app_flow_value = 0
-                    total_demo_presentation_value = 0
-                    total_daily_work_value = 0
-                    total_demo_feedback_value = 0      
-                else:    
-                    total_inv_defs = 0
-                    total_spel_errors = 0
-                    total_client_esc = 0
-                    total_tst_cases_missing = 0
-                    total_att_count=0
-                # Filter Dform by employee email and other search parameters
+                # Initialize all totals to 0 for every employee, regardless of project
+                total_client_esc_value = 0
+                total_not_writing_testcase_value = 0
+                total_invalid_defects_value = 0
+                total_client_req_value = 0
+                total_issue_rej_value = 0
+                total_time_man_value = 0
+                total_interaction_value = 0
+                total_test_condn_value = 0
+                total_gram_incor_value = 0
+                total_pre_condn_value = 0
+                total_communication_value = 0
+                total_app_flow_value = 0
+                total_regression_value = 0
+                total_demo_presentation_value = 0
+                total_daily_work_value = 0
+                total_demo_feedback_value = 0
+                total_inv_defs = 0
+                total_spel_errors = 0
+                total_client_esc = 0
+                total_tst_cases_missing = 0
+                total_att_count = 0
+                initial_quality=0
                 matched_employees = get_first_filtered_employees(
                     Dform.query.filter_by(employee_email=emp.emp_email),  # Filter by the employee's email
                     search_query,
@@ -3842,8 +4248,10 @@ def project_targets():
             
             data_dict = dict(zip(db_columns, row))
             project_name = data_dict.get("Project")
+            print(project_name)
             if project_name:
                 existing_project = ProjectTargets.query.filter_by(Project=project_name).first()
+                print(existing_project)
             if existing_project:
                     # Update existing record
                     existing_project.Lead = data_dict.get("Lead", existing_project.Lead)
@@ -4334,7 +4742,7 @@ def targets_bulk_upload():
 @app.route('/weekly_targets_bulk_upload',methods=['GET', 'POST'])
 def weekly_targets_bulk_upload():
     column_mapping = {
-        "Emp_ID": "emp_id",
+        "Emp ID": "emp_id",
         "Date From":"from_date",
         "Date To":"to_date",
         "Test Case Creation Target": "test_case_creation_target",
