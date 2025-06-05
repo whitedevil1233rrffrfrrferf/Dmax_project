@@ -109,7 +109,9 @@
                             <label for="target_month" class="two_label">Target month:</label>
                             <select id="target_month" class="proj_Sel select"  name="target_month" >
                                 {% for key, value in monthsDict.items() %}
-                                    <option value="{{ value }}" {% if fields.get('target_month') == value %}selected{% endif %}>
+                                    <option value="{{ value }}"
+                                        {% if fields.get('target_month') == value 
+                                        or (not fields.get('target_month') and value == current_month_check) %}selected{% endif %}>
                                         {{ value }}
                                     </option>
                                 {% endfor %}

@@ -38,11 +38,22 @@
                 </div>  
                   <div style="display: flex; flex-direction: column;">
                     <h2 style="color: gray;">Step:-2</h2>
-                    <form action="{{url_for('form_bulk_upload')}}" method="post" enctype="multipart/form-data" style=" max-width:40rem; border: 1px solid black; padding: 20px; width:30rem; box-shadow: 5px 15px 25px rgba(0,0,0,0.35);">
+                    <!-- <form action="{{url_for('form_bulk_upload')}}" method="post" enctype="multipart/form-data" style=" max-width:40rem; border: 1px solid black; padding: 20px; width:30rem; box-shadow: 5px 15px 25px rgba(0,0,0,0.35);">
                       
                         <div  style="position: relative; left:100px;">
                             <h4 style="display: inline; text-align: center;">File:</h4>
-                            <label for="file">Choose a File <i class="fa-solid fa-upload"></i></label>
+                            <label for="file_choose">Choose a File <i class="fa-solid fa-upload"></i></label>
+                            <input type="file" id="file_choose" name="file" class="file-input" accept=".xlsx"  required>
+                            <span id="file-name" style="display: block; color: gray; margin-left:20%;"></span>
+                        </div>
+        
+                        <button type="submit" class="btn btn-primary mt-3 upload" style="position: relative; left:170px; top:10px;" id="emp_info_upload">Upload</button>
+                    </form> -->
+                     <form action="{{url_for('form_bulk_upload')}}" method="post" enctype="multipart/form-data" style=" max-width:40rem; border: 1px solid black; padding: 20px; width:30rem; box-shadow: 5px 15px 25px rgba(0,0,0,0.35);">
+                    
+                        <div  style="position: relative; left:100px;">
+                            <h4 style="display: inline; text-align: center;">File:</h4>
+                            <label for="file" id="file_choose">Choose a File <i class="fa-solid fa-upload"></i></label>
                             <input type="file" id="file" name="file" class="file-input" accept=".xlsx"  required>
                             <span id="file-name" style="display: block; color: gray; margin-left:20%;"></span>
                         </div>

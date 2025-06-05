@@ -652,7 +652,7 @@ def custom_global_variable():
             role=normalize_role(user.role)
             user_name = user.name
     if user_name:
-        project = ProjectTargets.query.filter_by(Lead=user_name).first()
+        project = ProjectTargets.query.filter(func.lower(ProjectTargets.Lead) == user.name.lower()).first()
         if project:
             frequency = project.Frequency   
             print(frequency)             
@@ -2381,7 +2381,17 @@ def view_dscore():
             projects_under_manager = ProjectTargets.query.with_entities(ProjectTargets.Project).filter(
                 func.lower(ProjectTargets.Lead) == user_name.lower()
             ).all()
-               
+            projects_under_manager_lead = ProjectTargets.query.filter(
+                func.lower(ProjectTargets.Lead) == user_name.lower()
+            ).all()
+
+            base_quality = 98
+            for project in projects_under_manager_lead:
+                if project.ApprovalManager and project.ApprovalManager.lower() == "swetha":
+                    base_quality = 100
+                    break
+
+            print(base_quality)    
             # Extract project names from the query result
             project_names = [proj[0] for proj in projects_under_manager]
             is_actual_manager = False
@@ -2493,7 +2503,7 @@ def view_dscore():
                     if  total_client_esc_value > 0:
                         final_quality = 0
                     else:    
-                        final_quality = 98 - deductions
+                        final_quality = base_quality - deductions
                     all_matched = matched_employees.all()
                     if all_matched:
                         corrected_designation = corrections.get(all_matched[0].designation, all_matched[0].designation)
@@ -2523,7 +2533,7 @@ def view_dscore():
                     if  total_client_esc_value > 0:
                         final_quality = 0
                     else:    
-                        final_quality = 98 - deductions
+                        final_quality = base_quality - deductions
                     print(final_quality)    
                     all_matched = matched_employees.all()
                     if all_matched:
@@ -2540,7 +2550,7 @@ def view_dscore():
                     else:        
                         final_quality = final_quality *prod_multiplier / 100
                 else:
-                    final_quality = 98 - (total_inv_defs + total_spel_errors + total_client_esc + total_tst_cases_missing)
+                    final_quality = base_quality - (total_inv_defs + total_spel_errors + total_client_esc + total_tst_cases_missing)
                     initial_quality=final_quality  
                     print("initial quality",initial_quality)
                     all_matched = matched_employees.all()
@@ -2777,6 +2787,17 @@ def view_dscore():
             projects_under_manager = ProjectTargets.query.with_entities(ProjectTargets.Project).filter(
                 func.lower(ProjectTargets.ApprovalManager) == user_name.lower()
             ).all()
+            projects_under_manager_lead = ProjectTargets.query.filter(
+                func.lower(ProjectTargets.ApprovalManager) == user_name.lower()
+            ).all()
+
+            base_quality = 98
+            for project in projects_under_manager_lead:
+                if project.ApprovalManager and project.ApprovalManager.lower() == "swetha":
+                    base_quality = 100
+                    break
+
+            print(base_quality)   
             print(projects_under_manager)    
             # Extract project names from the query result
             project_names = [proj[0] for proj in projects_under_manager]
@@ -2829,6 +2850,7 @@ def view_dscore():
                         ).add_entity(IndihoodQuality)
                     for dform_entry, quality_entry in joined_matched_employees.all():
                         total_client_esc_value += quality_entry.client_esc_value or 0
+                        total_att_count += dform_entry.att or 0 
                         total_not_writing_testcase_value += quality_entry.not_writing_testcase_value or 0
                         total_invalid_defects_value += quality_entry.invalid_defects_value or 0
                         total_client_req_value += quality_entry.client_req_value or 0
@@ -2862,7 +2884,8 @@ def view_dscore():
                     if  total_client_esc_value > 0:
                         final_quality = 0
                     else:    
-                        final_quality = 98 - deductions
+                        final_quality = base_quality - deductions
+                        initial_quality = final_quality
                     all_matched = matched_employees.all()
                     if all_matched:
                         corrected_designation = corrections.get(all_matched[0].designation, all_matched[0].designation)
@@ -2879,7 +2902,7 @@ def view_dscore():
                         final_quality = final_quality *prod_multiplier / 100
                 # Final quality calculation
                 else:
-                    final_quality = 98 - (total_inv_defs + total_spel_errors + total_client_esc + total_tst_cases_missing)
+                    final_quality = base_quality - (total_inv_defs + total_spel_errors + total_client_esc + total_tst_cases_missing)
                     initial_quality=final_quality
                     print("initial_quality",final_quality)  
                     all_matched = matched_employees.all()
@@ -2965,6 +2988,8 @@ def view_dscore():
                                 "id": emp.id,  # Employee ID
                                 "employee_name": emp.emp_name,  # Employee's name
                                 "employee_id": emp.emp_id,
+                                "designation":emp_designation,
+                                "project": emp.emp_project,  
                                 "target": averages["avg_target"],  # âœ… Correct way to access dictionary values
                                 "actual": averages["avg_actual"],
                                 "production": adjusted_production,
@@ -3417,7 +3442,7 @@ def full_table_view(id):
                 "Requirement analyzing/writing testcondition",
                 "End-End test cases executed"
             ],
-            "Website Development":[
+            "Web Development":[
                 "New Features Implemented",
                 "Defects Fixed",
                 "Enhancements Target",
@@ -4181,7 +4206,7 @@ def set_targets(emp_id):
         year_formatted=str(request.form.get("target_year"))
         target_month = request.form.get("target_month")
         target_month_num = monthsDict_2.get(target_month)  
-        if target_month_num != 1 and first_entry_check is None:
+        if target_month_num not in (1, 5) and first_entry_check is None:
             if year_formatted != current_year_check or month_formatted != current_month_check:
                 flash(f"For the first target entry,Please set a target for {current_month_check} {current_year_check}.", "warning")
                 return redirect(url_for("set_targets", emp_id=emp_id, role=role))
@@ -4196,7 +4221,7 @@ def set_targets(emp_id):
             flash("An approved Dmax score already exists for this month", "warning")
             return redirect(url_for("set_targets",emp_id=emp_id,role="Project Lead"))  # Redirect to the same page
 
-        if target_month_num != 1 and first_entry_check and not previous_entry:
+        if target_month_num not in (1, 5) and first_entry_check and not previous_entry:
             existing_entry = Target_columns.query.filter_by(
                 emp_id=emp_id,
                 target_month=month_formatted,
@@ -4221,7 +4246,7 @@ def set_targets(emp_id):
             db.session.add(new_target_entry)            
         db.session.commit()     
         return redirect(request.url)   
-    return render_template("set_targets.html", employee=employee,values=values,current_year=current_year,fields=fields,role=role,monthsDict=monthsDict,years=years)
+    return render_template("set_targets.html", employee=employee,values=values,current_year=current_year,fields=fields,role=role,monthsDict=monthsDict,years=years,current_month_check=current_month_check)
 
 @app.route("/project_targets", methods=["GET", "POST"])
 @login_required
@@ -4247,8 +4272,25 @@ def project_targets():
                 continue
             
             data_dict = dict(zip(db_columns, row))
+            print("data_dict",data_dict)
             project_name = data_dict.get("Project")
-            print(project_name)
+            lead_name = data_dict.get("Lead", "").lower()
+            approval_manager_name = data_dict.get("ApprovalManager", "").lower()
+
+            # Check if Lead exists in Employee database
+            lead_exists = Employee.query.filter(func.lower(Employee.name) == lead_name).first()
+            if not lead_exists:
+                print("lead_name",lead_name)
+                flash(f"Lead '{lead_name}' does not exist in Employee database. Please check Lead name again", "warning")
+                continue
+
+            # Check if Approval Manager exists in Employee database
+            approval_manager_exists = Employee.query.filter(func.lower(Employee.name) == approval_manager_name).first()
+            if not approval_manager_exists:
+                flash(f"Approval Manager '{approval_manager_name}' does not exist in Employee database. Please check Approval Manager name again", "warning")
+                continue
+            has_data = True 
+            data_dict["Frequency"] = "Monthly"
             if project_name:
                 existing_project = ProjectTargets.query.filter_by(Project=project_name).first()
                 print(existing_project)
@@ -4259,13 +4301,13 @@ def project_targets():
             else:
                 employee = ProjectTargets(**data_dict)
                 db.session.add(employee)
-            has_data = True    
+               
         
         if has_data:  # Commit only if valid data was found
             db.session.commit()
             flash("File uploaded successfully!", "success")
         else:
-            flash("No valid projects found in the file. Please check the template.", "warning")
+            flash("Failed to upload the file. Please check the template.", "warning")
 
         
     return render_template("projects_upload.html",project_targets=project_targets)
@@ -4569,24 +4611,52 @@ def download_employee_report():
 
     # Load employee data from session
     filtered_employees = json.loads(session.get('filtered_employees', '[]'))
-    print(filtered_employees)
+    
     # Start writing from row 3 (assuming headers are in row 1 and 2)
     start_row = 3
     for index, emp in enumerate(filtered_employees, start=start_row):
-        ws.cell(row=index, column=1, value=emp["id"])
-        ws.cell(row=index, column=2, value=emp["employee_name"])
-        ws.cell(row=index, column=3, value=emp["target"])
-        ws.cell(row=index, column=4, value=emp["actual"])
-        ws.cell(row=index, column=5, value=emp["record_count"])
-        ws.cell(row=index, column=6, value=emp["att_count"])
-        ws.cell(row=index, column=7, value="98")
-        ws.cell(row=index, column=8, value=emp["initial_quality"])
-        ws.cell(row=index, column=9, value=emp["production"])
-        ws.cell(row=index, column=10, value=emp["quality"])
-        ws.cell(row=index, column=11, value=emp["attendance"])
-        ws.cell(row=index, column=12, value=emp["skill"]) 
-        ws.cell(row=index, column=13, value=emp["new_initiatives"])
-        ws.cell(row=index, column=14, value=emp["Dmax_score"])
+        designation = emp.get("designation", "")
+        skill = emp.get("skill", 0)
+        new_initiatives= emp.get("new_initiatives", 0)
+
+        if designation in ["Intern", "Jr.QA Engineer"]:
+            skill_weightage = 10
+            new_init_weightage = 0
+            new_init_target = 0
+        else:
+            skill_weightage = 5
+            new_init_target = 100
+        if designation == "QA Engineer":
+            new_init_weightage = 15
+        if designation == "Sr.QA Engineer":
+            new_init_weightage = 20
+        if designation == "QA Lead":
+            new_init_weightage = 30    
+
+
+        skill_actual=round((skill / skill_weightage) * 100, 2) if skill_weightage else 0  
+        new_init_actual=round((new_initiatives / new_init_weightage) * 100, 2) if new_init_target else 0  
+        ws.cell(row=index, column=1, value=index - start_row + 1)
+        ws.cell(row=index, column=2, value=emp["employee_id"]) 
+        ws.cell(row=index, column=3, value=emp["employee_name"])
+        ws.cell(row=index, column=4, value=emp["designation"])
+        ws.cell(row=index, column=5, value=emp["project"])
+        ws.cell(row=index, column=6, value=emp["target"])
+        ws.cell(row=index, column=7, value=emp["actual"])
+        ws.cell(row=index, column=8, value=emp["record_count"])
+        ws.cell(row=index, column=9, value=emp["att_count"])
+        ws.cell(row=index, column=10, value="98")
+        ws.cell(row=index, column=11, value=emp["initial_quality"])
+        ws.cell(row=index, column=12, value="100")
+        ws.cell(row=index, column=13, value=skill_actual)
+        ws.cell(row=index, column=14, value=new_init_target)
+        ws.cell(row=index, column=15, value=new_init_actual)
+        ws.cell(row=index, column=16, value=emp["production"])
+        ws.cell(row=index, column=17, value=emp["quality"])
+        ws.cell(row=index, column=18, value=emp["attendance"])
+        ws.cell(row=index, column=19, value=emp["skill"]) 
+        ws.cell(row=index, column=20, value=emp["new_initiatives"])
+        ws.cell(row=index, column=21, value=emp["Dmax_score"])
         
         
         
