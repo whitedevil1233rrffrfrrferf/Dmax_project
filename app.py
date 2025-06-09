@@ -658,7 +658,8 @@ def custom_global_variable():
             print(frequency)             
     # Return the role to all templates as a global variable
     return {'user_role': role,
-            'project_frequency': frequency
+            'project_frequency': frequency,
+            "user_name": user_name
             }
 
 @app.template_filter('get_attr')
@@ -1641,7 +1642,7 @@ def search_employee():
     employee_name = data.get('employee_name')
     logged_in_user = get_logged_in_user_details()
     logged_in_user_role = logged_in_user.get("role")
-    logged_in_user_name = logged_in_user.get("name")
+    logged_in_user_name = logged_in_user.get("name").lower()
     current_date = datetime.now().date()
     current_month_day = (current_date.month, current_date.day)
     print("current_date",current_month_day)
@@ -1680,7 +1681,7 @@ def search_employee():
     for emp in matched_employees:
         print(f"Processing employee: {emp.emp_name} (emp_id: {emp.emp_id})")   
     # Create a list of dictionaries containing employee details
-        if emp.reporting_manager == logged_in_user_name:
+        if emp.reporting_manager.lower() == logged_in_user_name:
             # Include employee details in the response if the employee's reporting manager matches
             employee_details = {column.name: getattr(emp, column.name) for column in Employee_information.__table__.columns}
             if "emp_designation" in employee_details:
@@ -1765,15 +1766,29 @@ def edit_employee(employee_id):
     projects=['Akyrian','Auxo','Avanti','Bench','Fora Travels','Indihood','IPS','IQHive','LevelBlue','Web Development','Opus Clip','Training']
     designations=['Intern','Jr.QA Engineer','QA Engineer','Sr.QA Engineer','QA Lead']
     if request.method == 'POST':
-        
+        emp_name = request.form['emp_name']
+        emp_id = request.form['emp_id']
+        emp_email = request.form['emp_email']
+        emp_project = request.form['emp_project']
+        emp_designation = corrections.get(request.form['emp_designation'], request.form['emp_designation'])
+        reporting_manager = request.form['reporting_manager']
+        actual_reporting_manager = request.form['actual_reporting_manager']
+        match = ProjectTargets.query.filter(
+            func.lower(ProjectTargets.Project) == emp_project.lower(),
+            func.lower(ProjectTargets.Lead) == reporting_manager.lower(),
+            func.lower(ProjectTargets.ApprovalManager) == actual_reporting_manager.lower()
+        ).first()
         # Update the employee data with form values
-        employee.emp_name = request.form['emp_name']
-        employee.emp_id=request.form['emp_id']
-        employee.emp_email = request.form['emp_email']
-        employee.emp_project = request.form['emp_project']
-        employee.emp_designation = corrections.get(request.form['emp_designation'], request.form['emp_designation'])
-        employee.reporting_manager = request.form['reporting_manager']  # Lead/Spocs
-        employee.actual_reporting_manager = request.form['actual_reporting_manager']
+        if match:
+            employee.emp_name = request.form['emp_name']
+            employee.emp_id=request.form['emp_id']
+            employee.emp_email = request.form['emp_email']
+            employee.emp_project = request.form['emp_project']
+            employee.emp_designation = corrections.get(request.form['emp_designation'], request.form['emp_designation'])
+            employee.reporting_manager = request.form['reporting_manager']  # Lead/Spocs
+            employee.actual_reporting_manager = request.form['actual_reporting_manager']
+        else:
+            flash("Lead or Approval Manager does not exist in the employee Database")    
         # Save the updated data back to the database
         
         db.session.commit()
@@ -1792,7 +1807,7 @@ def employee_upload():
             file = request.files['file']  # Get the uploaded file
             try:
                 wb = load_workbook(file, data_only=True, keep_links=False)
-                flash(f"Sheet names: {wb.sheetnames}", "info")
+                # flash(f"Sheet names: {wb.sheetnames}", "info")
             except Exception as e:
                 flash(f"Error reading workbook: {str(e)}", "danger")
             # Load the workbook directly from the file object
@@ -1826,7 +1841,9 @@ def employee_upload():
                     continue 
                 if "emp_designation" in employee_data:
                     designation = employee_data["emp_designation"]				                    
-                    
+                    if designation not in ["Intern","Jr.QA Engineer","QA Engineer","Sr.QA Engineer","QA Lead"]:
+                        flash(f"Row skipped: Invalid designation '{designation}' provided. Please select a designation from the sample dropdown provided.", "danger")
+                        continue
                     # Standardizing incorrect spellings
                     corrections = {
                         "SrQAEngineer": "Sr.QA Engineer",
@@ -1983,7 +2000,7 @@ def employee_upload():
                 
             # # Commit all changes to the database
             db.session.commit() 
-            flash("Employees uploaded successfully!", "success")
+            flash("File uploaded successfully!", "success")
         except Exception as e:
             print("e",e)   
             flash("Failed to upload employees. Please check the sample file.", "danger")
@@ -2664,10 +2681,40 @@ def view_dscore():
                                    selected_project=selected_project)        
 
         if role=="crewmate":
+            total_client_esc_value = 0
+            total_not_writing_testcase_value = 0
+            total_invalid_defects_value = 0
+            total_client_req_value = 0
+            total_issue_rej_value = 0
+            total_time_man_value = 0
+            total_interaction_value = 0
+            total_test_condn_value = 0
+            total_gram_incor_value = 0
+            total_pre_condn_value = 0
+            total_communication_value = 0
+            total_app_flow_value = 0
+                
+            total_client_esc_value = 0
+            total_not_writing_testcase_value = 0
+            total_invalid_defects_value = 0
+            total_client_req_value = 0
+            total_issue_rej_value = 0
+            total_time_man_value = 0
+            total_interaction_value = 0
+            total_test_condn_value = 0
+            total_gram_incor_value = 0
+            total_pre_condn_value = 0
+            total_communication_value = 0
+            total_regression_value = 0
+            total_app_flow_value = 0
+            total_demo_presentation_value = 0
+            total_daily_work_value = 0
+            total_demo_feedback_value = 0    
+                   
             total_inv_defs = 0
             total_spel_errors = 0
             total_client_esc = 0
-            total_tst_cases_missing = 0 
+            total_tst_cases_missing = 0
             matched_employees = get_first_filtered_employees(
                 Dform.query.filter_by(employee_email=email),
                 search_query,
@@ -2676,8 +2723,84 @@ def view_dscore():
                 selected_year,
                 None
             )
-            has_client_escalation=False
-            for entry in matched_employees.all():
+            employee = Employee_information.query.filter_by(emp_email=email).first()
+            project = "Avanti"
+            if employee:
+                project = employee.emp_project
+
+            base_quality = 98
+            project_target = ProjectTargets.query.filter(
+                func.lower(ProjectTargets.Project) == func.lower(project)
+            ).first()
+            if project_target and project_target.ApprovalManager and project_target.ApprovalManager.lower() == "swetha":
+                base_quality = 100
+
+            has_client_escalation = False
+
+            # Initialize all totals to 0 before using them
+            total_client_esc_value = 0
+            total_not_writing_testcase_value = 0
+            total_invalid_defects_value = 0
+            total_client_req_value = 0
+            total_issue_rej_value = 0
+            total_time_man_value = 0
+            total_interaction_value = 0
+            total_test_condn_value = 0
+            total_gram_incor_value = 0
+            total_pre_condn_value = 0
+            total_communication_value = 0
+            total_app_flow_value = 0
+            total_regression_value = 0
+            total_demo_presentation_value = 0
+            total_daily_work_value = 0
+            total_demo_feedback_value = 0
+            total_inv_defs = 0
+            total_spel_errors = 0
+            total_client_esc = 0
+            total_tst_cases_missing = 0
+
+            if project == "Indihood":
+                joined_matched_employees = matched_employees.join(
+                    IndihoodQuality, Dform.id == IndihoodQuality.dform_id
+                ).add_entity(IndihoodQuality)
+                for dform_entry, quality_entry in joined_matched_employees.all():
+                    total_client_esc_value += quality_entry.client_esc_value or 0
+                    total_not_writing_testcase_value += quality_entry.not_writing_testcase_value or 0
+                    total_invalid_defects_value += quality_entry.invalid_defects_value or 0
+                    total_client_req_value += quality_entry.client_req_value or 0
+                    total_issue_rej_value += quality_entry.issue_rej_value or 0
+                    total_time_man_value += quality_entry.time_man_value or 0
+                    total_interaction_value += quality_entry.interaction_value or 0
+                    total_test_condn_value += quality_entry.test_condn_value or 0
+                    total_gram_incor_value += quality_entry.gram_incor_value or 0
+                    total_pre_condn_value += quality_entry.pre_condn_value or 0
+                    total_communication_value += quality_entry.communication_value or 0
+                    total_app_flow_value += quality_entry.app_flow_value or 0
+
+            elif project == "Auxo":
+                joined_matched_employees = matched_employees.join(
+                    AuxoQuality, Dform.id == AuxoQuality.dform_id
+                ).add_entity(AuxoQuality)
+                for dform_entry, quality_entry in joined_matched_employees.all():
+                    total_client_esc_value += quality_entry.client_esc_value or 0
+                    total_not_writing_testcase_value += quality_entry.not_writing_testcase_value or 0
+                    total_invalid_defects_value += quality_entry.invalid_defects_value or 0
+                    total_client_req_value += quality_entry.client_req_value or 0
+                    total_issue_rej_value += quality_entry.issue_rej_value or 0
+                    total_time_man_value += quality_entry.time_man_value or 0
+                    total_interaction_value += quality_entry.interaction_value or 0
+                    total_test_condn_value += quality_entry.test_condn_value or 0
+                    total_gram_incor_value += quality_entry.gram_incor_value or 0
+                    total_pre_condn_value += quality_entry.pre_condn_value or 0
+                    total_communication_value += quality_entry.communication_value or 0
+                    total_regression_value += quality_entry.regression_value or 0
+                    total_demo_presentation_value += quality_entry.demo_presentation_value or 0
+                    total_daily_work_value += quality_entry.daily_work_value or 0
+                    total_demo_feedback_value += quality_entry.demo_feedback_value or 0
+                    total_app_flow_value += quality_entry.app_flow_value or 0
+
+            else:
+                for entry in matched_employees.all():
                     total_inv_defs += entry.inv_defs or 0
                     total_spel_errors += entry.spel_errors or 0
                     total_client_esc += entry.client_esc or 0
@@ -2685,25 +2808,84 @@ def view_dscore():
                     if entry.client_esc and entry.client_esc > 0:
                         has_client_escalation = True
 
-                # Final quality calculation
-            final_quality = 98 - (total_inv_defs + total_spel_errors + total_client_esc + total_tst_cases_missing)
-            initial_quality=final_quality 
-            print("initial_quality",final_quality)  
-            all_matched = matched_employees.all()
-            if all_matched:
-                corrected_designation = corrections.get(all_matched[0].designation, all_matched[0].designation)
-            else:
-                # No matched employees, handle safely
-                corrected_designation = None
-            if corrected_designation == "Intern":
-                prod_multiplier=50
-            else:
-                prod_multiplier = 40    
-            if has_client_escalation:
-                final_quality = 0  
-            else:        
-                final_quality = final_quality *prod_multiplier / 100     
+            # Final quality calculation
+            if project == "Indihood":
+                deductions = (
+                    total_not_writing_testcase_value +
+                    total_invalid_defects_value + total_client_req_value +
+                    total_issue_rej_value + total_time_man_value +
+                    total_interaction_value + total_test_condn_value +
+                    total_gram_incor_value + total_pre_condn_value +
+                    total_communication_value + total_app_flow_value
+                )
+                print("deductions", deductions)
+                if total_client_esc_value > 0:
+                    final_quality = 0
+                else:
+                    final_quality = base_quality - deductions
+                    all_matched = matched_employees.all()
+                if all_matched:
+                    corrected_designation = corrections.get(all_matched[0].designation, all_matched[0].designation)
+                else:
+                    corrected_designation = None
+                if corrected_designation == "Intern":
+                    prod_multiplier = 50
+                else:
+                    prod_multiplier = 40
+                if has_client_escalation:
+                    final_quality = 0
+                else:
+                    final_quality = final_quality * prod_multiplier / 100
+
+            elif project == "Auxo":
+                deductions = (
+                    total_not_writing_testcase_value +
+                    total_invalid_defects_value + total_client_req_value +
+                    total_issue_rej_value + total_time_man_value +
+                    total_interaction_value + total_test_condn_value +
+                    total_gram_incor_value + total_pre_condn_value +
+                    total_communication_value + total_regression_value +
+                    total_demo_presentation_value + total_daily_work_value +
+                    total_demo_feedback_value + total_app_flow_value
+                )
+                if total_client_esc_value > 0:
+                    final_quality = 0
+                else:
+                    final_quality = base_quality - deductions
                 print(final_quality)
+                all_matched = matched_employees.all()
+                if all_matched:
+                    corrected_designation = corrections.get(all_matched[0].designation, all_matched[0].designation)
+                else:
+                    corrected_designation = None
+                if corrected_designation == "Intern":
+                    prod_multiplier = 50
+                else:
+                    prod_multiplier = 40
+                if has_client_escalation:
+                    final_quality = 0
+                else:
+                    final_quality = final_quality * prod_multiplier / 100
+
+            else:
+                final_quality = base_quality - (total_inv_defs + total_spel_errors + total_client_esc + total_tst_cases_missing)
+                initial_quality = final_quality
+                print("initial quality", initial_quality)
+                all_matched = matched_employees.all()
+                if all_matched:
+                    corrected_designation = corrections.get(all_matched[0].designation, all_matched[0].designation)
+                else:
+                    corrected_designation = None
+                if corrected_designation == "Intern":
+                    prod_multiplier = 50
+                else:
+                    prod_multiplier = 40
+                if has_client_escalation:
+                    final_quality = 0
+                else:
+                    final_quality = final_quality * prod_multiplier / 100
+                print("final quality", final_quality)
+            
             filtered_employees=[]   
             if matched_employees.count() > 0:
                 first_entry = matched_employees.first()
@@ -2862,6 +3044,28 @@ def view_dscore():
                         total_pre_condn_value += quality_entry.pre_condn_value or 0
                         total_communication_value += quality_entry.communication_value or 0
                         total_app_flow_value += quality_entry.app_flow_value or 0
+                elif emp.emp_project == "Auxo":
+                    joined_matched_employees = matched_employees.join(
+                            AuxoQuality, Dform.id == AuxoQuality.dform_id
+                        ).add_entity(AuxoQuality)
+                    for dform_entry, quality_entry in joined_matched_employees.all():
+                        
+                        total_client_esc_value += quality_entry.client_esc_value or 0
+                        total_not_writing_testcase_value += quality_entry.not_writing_testcase_value or 0
+                        total_invalid_defects_value += quality_entry.invalid_defects_value or 0
+                        total_client_req_value += quality_entry.client_req_value or 0
+                        total_issue_rej_value += quality_entry.issue_rej_value or 0
+                        total_time_man_value += quality_entry.time_man_value or 0
+                        total_interaction_value += quality_entry.interaction_value or 0
+                        total_test_condn_value += quality_entry.test_condn_value or 0
+                        total_gram_incor_value += quality_entry.gram_incor_value or 0
+                        total_pre_condn_value += quality_entry.pre_condn_value or 0
+                        total_communication_value += quality_entry.communication_value or 0
+                        total_regression_value += quality_entry.regression_value or 0
+                        total_demo_presentation_value += quality_entry.demo_presentation_value or 0
+                        total_daily_work_value += quality_entry.daily_work_value or 0
+                        total_demo_feedback_value += quality_entry.demo_feedback_value or 0
+                        total_app_flow_value += quality_entry.app_flow_value or 0       
                 else:
                     for entry in matched_employees.all():
                     
@@ -2881,6 +3085,39 @@ def view_dscore():
                         total_gram_incor_value + total_pre_condn_value +
                         total_communication_value + total_app_flow_value
                     )
+                    
+                    if  total_client_esc_value > 0:
+                        final_quality = 0
+                    else:    
+                        final_quality = base_quality - deductions
+                        initial_quality = final_quality
+                    all_matched = matched_employees.all()
+                    if all_matched:
+                        corrected_designation = corrections.get(all_matched[0].designation, all_matched[0].designation)
+                    else:
+                        # No matched employees, handle safely
+                        corrected_designation = None
+                    if corrected_designation == "Intern":
+                        prod_multiplier=50
+                    else:
+                        prod_multiplier = 40    
+                    if has_client_escalation:
+                        final_quality = 0  
+                    else:        
+                        final_quality = final_quality *prod_multiplier / 100
+                # Final quality calculation
+                elif emp.emp_project == "Auxo":
+                    deductions = (
+                        total_not_writing_testcase_value +
+                        total_invalid_defects_value + total_client_req_value +
+                        total_issue_rej_value + total_time_man_value +
+                        total_interaction_value + total_test_condn_value +
+                        total_gram_incor_value + total_pre_condn_value +
+                        total_communication_value + total_regression_value +
+                        total_demo_presentation_value + total_daily_work_value +
+                        total_demo_feedback_value + total_app_flow_value
+                    )
+                    
                     if  total_client_esc_value > 0:
                         final_quality = 0
                     else:    
@@ -4028,11 +4265,20 @@ def form_bulk_upload():
         "new_initiatives":69,
         "Dmax_score":70
     }
+    string_fields = {
+        "employee_name", 
+        "employee_id", 
+        "employee_email", 
+        "today_date", 
+        "project", 
+        "designation"
+    }
     if request.method == 'POST':
         file = request.files["file"]
         wb = load_workbook(file, data_only=True)
         ws=wb.active
         all_row_data = []
+        
         if file.filename == "":
             return "No file selected", 400
         for row in ws.iter_rows(min_row=4, values_only=True):  # Use values_only=False to access the cells directly
@@ -4040,10 +4286,30 @@ def form_bulk_upload():
                 continue
             row_data = {}
             empty_columns = []
+            skip_this_row = False
             for field, cell_value in zip(field_to_column.keys(), row):  
                 if cell_value is None or cell_value == "":  
-                    empty_columns.append(field.replace('_', ' ').capitalize())  
+                    empty_columns.append(field.replace('_', ' ').capitalize())
+                if str(cell_value).strip().upper() == "#N/A":
+                    flash(f"N/A value found in column {field}", "danger")
+                    skip_this_row = True
+                    break  # 🚫 Skip entire row immediately
+
+                if field not in string_fields:
+                    # Only accept numeric values for numeric fields
+                    if isinstance(cell_value, str):
+                        try:
+                            float(cell_value)  # Try to convert to number
+                        except ValueError:
+                            flash(f"Invalid string '{cell_value}' in numeric field '{field}'", "danger")
+                            skip_this_row = True
+                            break  # 🚫 Skip this row completely
                 row_data[field] = cell_value  
+            if skip_this_row:
+                continue 
+            if empty_columns:
+                flash(f"Skipping row: {', '.join(empty_columns)} are empty!", "danger")
+                continue   
             employee_id = row_data.get("employee_id")
             employee_email = row_data.get("employee_email")    
             existing_employee = Employee_information.query.filter_by(
@@ -4106,7 +4372,7 @@ def form_bulk_upload():
                             today_date=row_data["today_date"]
                         ).first()
 
-                    print("rows",row_data["today_date"])        
+                            
                 if field in ["production", "quality", "attendance", "skill", "new_initiatives", "Dmax_score"]:
                     if isinstance(cell_value, (int, float)):  # Ensure it's numeric before multiplying
                         row_data[field] = round(cell_value * 100, 2)  # Convert to percentage
@@ -4124,7 +4390,7 @@ def form_bulk_upload():
                     continue    
             else:
                 try:
-
+                       
                 # Check if any field in the row is None, and skip the row if it contains null values
                     new_entry = Dform(**row_data)
                     db.session.add(new_entry)
@@ -4132,6 +4398,7 @@ def form_bulk_upload():
                     db.session.rollback()
                     flash(f"Database error: {str(e)}", "danger")    
         db.session.commit()
+        flash("File uploaded successfully!", "success")
               
     return render_template("form_bulk_upload.html")
 
@@ -4206,7 +4473,7 @@ def set_targets(emp_id):
         year_formatted=str(request.form.get("target_year"))
         target_month = request.form.get("target_month")
         target_month_num = monthsDict_2.get(target_month)  
-        if target_month_num not in (1, 5) and first_entry_check is None:
+        if target_month_num not in (1, 5,6) and first_entry_check is None:
             if year_formatted != current_year_check or month_formatted != current_month_check:
                 flash(f"For the first target entry,Please set a target for {current_month_check} {current_year_check}.", "warning")
                 return redirect(url_for("set_targets", emp_id=emp_id, role=role))

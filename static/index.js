@@ -73,7 +73,7 @@ function selectEmployee(element) {
     try {
         var employee = JSON.parse(employeeDetails);
         
-        if (employee.error) {
+        if (employee.error ) {
             alert(employee.error); // Display error message
             return; // Stop further execution
         }
