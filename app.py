@@ -1834,6 +1834,20 @@ def employee_upload():
                 employee_data = {db_field: row[idx] for db_field, idx in mapped_columns.items()}
                 if all(value is None for value in employee_data.values()):
                     continue  
+                project_name = employee_data.get('emp_project')
+                lead_name = employee_data.get('reporting_manager', '').lower()
+                approval_manager = employee_data.get('actual_reporting_manager', '').lower()
+
+                # Query ProjectTargets to validate the combination
+                valid_project = ProjectTargets.query.filter(
+                    func.lower(ProjectTargets.Project) == project_name.lower(),
+                    func.lower(ProjectTargets.Lead) == lead_name,
+                    func.lower(ProjectTargets.ApprovalManager) == approval_manager
+                ).first()
+
+                if not valid_project:
+                    flash(f"Invalid combination for employee {employee_data.get('emp_name')}: Project '{project_name}' with Lead '{lead_name}' and Approval Manager '{approval_manager}' does not match records.", "danger")
+                    continue
                 filled_fields = [field for field in required_fields if employee_data.get(field)]
 
                 if 0 < len(filled_fields) < len(required_fields):  # If only some required fields are filled
@@ -2214,7 +2228,7 @@ def team_dmax_table():
         current_month = datetime.now().strftime("%m")
         current_year = datetime.now().strftime("%Y")
         selected_project = request.args.get('project')
-        
+        allow_target_override = False
         if not selected_month:
             selected_month = current_month
         if not selected_year:
@@ -2328,13 +2342,15 @@ def team_dmax_table():
                     "actual_reporting_manager":emp.actual_reporting_manager,
                     "id":emp.id,
                     "role": (
-                                "Project Lead" if emp.emp_project in [proj.Project for proj in projects_led_by_user]
+                                "Project Lead" if emp.emp_project in [proj.Project for proj in projects_led_by_user] or 
+                                (user_name.lower() == "jerene jose" and emp.emp_id == "DC5145")
                                 else ("Approval Manager" if emp.emp_project in [proj.Project for proj in user_manager]
                                 else "Employee")
                             ) , # Determine role,
                     "has_approved_target": (emp.emp_id in employees_with_approved_targets) if employees_with_approved_targets else False , # Store whether they have an approved target
                     "has_pending_target": employees_with_pending_targets.get(emp.emp_id, {}),
                     "is_approval_manager": is_approval_manager if is_approval_manager else False,
+                    "allow_target_override": user_name.lower() == "jerene jose" and emp.emp_id =="DC5145",  # inline condition
                     "target_status":status_map.get(emp.emp_id,"No targets set")   
                                         })
                 
@@ -2668,7 +2684,8 @@ def view_dscore():
                             ),
                             "project":emp.emp_project,
                             "project_status":project_status,
-                            "flag": emp.emp_project in project_names,
+                            "flag": emp.emp_project in project_names or (user_name.lower() == "jerene jose" and emp.emp_id == "DC5145"),
+                            "reporting_manager": emp.reporting_manager,
                             "approval_status":approval_status,
                             "is_actual_manager":is_actual_manager
                         }
@@ -3201,8 +3218,11 @@ def view_dscore():
                     DmaxApprovals.approved_year == selected_year_int,   # Convert year to integer
                     DmaxApprovals.status == "Approved"  # Check if the record is approved
                 ).first()   
-                hide_op_excellence_icon = dmax_approval_record and dmax_approval_record.status.lower() == "approved"
-
+                hide_op_excellence_icon = (
+                    (dmax_approval_record and dmax_approval_record.status.lower() == "approved") or
+                    (user_name.lower() == "jerene jose" and emp.emp_id == "DC5145")
+                )
+                
                 record_count=matched_employees.count()  
                 # If matched employees exist, calculate averages
                 if matched_employees.count() > 0:

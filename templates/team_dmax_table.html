@@ -109,7 +109,7 @@
                                                 </button>
                                             </a>    
                                         
-                                        {% elif emp.role == "Project Lead" %}
+                                        {% elif emp.role == "Project Lead" or emp.allow_target_override %}
                                             <a href="{{ url_for('set_targets', emp_id=emp.emp_id,role=emp.role) }}">
                                                 <button class="btn btn-primary" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ emp.target_status }}">
                                                     <i class="fa-solid fa-marker"></i>
