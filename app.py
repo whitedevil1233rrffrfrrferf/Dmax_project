@@ -340,6 +340,8 @@ class Dform(db.Model):
     test_scripts_updation_actual=db.Column(db.Integer)
     test_scripts_execution_target=db.Column(db.Integer)
     test_scripts_execution_actual=db.Column(db.Integer)
+    test_scripts_fixed_target=db.Column(db.Integer, default=0)
+    test_scripts_fixed_actual=db.Column(db.Integer, default=0)
     site_Scrub_target=db.Column(db.Integer)
     site_Scrub_actual=db.Column(db.Integer)
     project_doc_target=db.Column(db.Integer)
@@ -518,6 +520,8 @@ class Target_columns(db.Model):
     test_scripts_creation_target=db.Column(db.Integer)
     test_scripts_updation_target=db.Column(db.Integer)
     test_scripts_execution_target=db.Column(db.Integer)
+    test_scripts_fixed_target = db.Column(db.Integer, default=0)
+    test_scripts_fixed_actual = db.Column(db.Integer, default=0)
     site_Scrub_target=db.Column(db.Integer)
     project_doc_target=db.Column(db.Integer)
     internal_Review_target=db.Column(db.Integer)
@@ -724,6 +728,8 @@ def home():
             "test_scripts_updation_actual":'T',
             "test_scripts_execution_target":'U',
             "test_scripts_execution_actual":'V',
+            "test_scripts_fixed_target":'AA',
+            "test_scripts_fixed_actual":'AB',
             "site_Scrub_target":'AG',
             "site_Scrub_actual":'AH',
             "project_doc_target":'W',
@@ -987,6 +993,8 @@ def home():
             test_scripts_updation_actual=form_data.get('test_scripts_updation_actual'),
             test_scripts_execution_target=form_data.get('test_scripts_execution_target'),
             test_scripts_execution_actual=form_data.get('test_scripts_execution_actual'),
+            test_scripts_fixed_target=form_data.get('test_scripts_fixed_target'),
+            test_scripts_fixed_actual=form_data.get('test_scripts_fixed_actual'),
             site_Scrub_target=form_data.get('site_Scrub_target'),
             site_Scrub_actual=form_data.get('site_Scrub_actual'),
             project_doc_target=form_data.get('project_doc_target'),
@@ -3478,6 +3486,9 @@ def full_table_view(id):
         "Testscripts Execution": [
             "test_scripts_execution_target", "test_scripts_execution_actual"
         ],
+        "Testscripts Fixed": [
+            "test_scripts_fixed_target", "test_scripts_fixed_actual"
+        ],
         "Site Scrub": [
             "site_Scrub_target", "site_Scrub_actual"
         ],
@@ -3628,6 +3639,7 @@ def full_table_view(id):
                 "Testscripts Creation",
                 "Testscripts Updation",
                 "Testscripts Execution",
+                "Testscripts Fixed",
                 "Site Scrub",
                 "Project Documentation",
                 "Internal review",
@@ -3740,6 +3752,7 @@ def full_table_view(id):
             "Testscripts Creation": ["Target", "Actual"],
             "Testscripts Execution": ["Target", "Actual"],
             "Testscripts Updation": ["Target", "Actual"],
+            "Testscripts Fixed": ["Target", "Actual"],
             "Project Documentation": ["Target", "Actual"],
             "Internal review": ["Target", "Actual"],
             "Regression cycle": ["Target", "Actual"],
@@ -3803,7 +3816,7 @@ def full_table_view(id):
         "test_case_creation_actual", "test_case_updation_target", "test_case_updation_actual",
         "test_case_execution_target", "test_case_execution_actual", "defects_found_target",
         "defects_found_actual","defects_verification_target", "defects_verification_actual", "test_scripts_creation_target", "test_scripts_creation_actual",
-        "test_scripts_execution_target","test_scripts_execution_actual","test_scripts_updation_target", "test_scripts_updation_actual",
+        "test_scripts_execution_target","test_scripts_execution_actual","test_scripts_updation_target", "test_scripts_updation_actual","test_scripts_fixed_target", "test_scripts_fixed_actual",
          "project_doc_target","project_doc_actual","internal_Review_target", "internal_Review_actual",
         
           "regression_cycle_target","regression_cycle_actual","req_anal_target", "req_anal_actual",
@@ -3827,7 +3840,7 @@ def full_table_view(id):
             "test_case_creation_actual", "test_case_updation_target", "test_case_updation_actual",
             "test_case_execution_target", "test_case_execution_actual", "defects_found_target",
             "defects_found_actual","defects_verification_target", "defects_verification_actual", "test_scripts_creation_target", "test_scripts_creation_actual",
-            "test_scripts_execution_target","test_scripts_execution_actual","test_scripts_updation_target", "test_scripts_updation_actual",
+            "test_scripts_execution_target","test_scripts_execution_actual","test_scripts_updation_target", "test_scripts_updation_actual","test_scripts_fixed_target", "test_scripts_fixed_actual",
             "project_doc_target","project_doc_actual","internal_Review_target", "internal_Review_actual",
             
             "regression_cycle_target","regression_cycle_actual","req_anal_target", "req_anal_actual",
@@ -3850,7 +3863,7 @@ def full_table_view(id):
             "test_case_creation_actual", "test_case_updation_target", "test_case_updation_actual",
             "test_case_execution_target", "test_case_execution_actual", "defects_found_target",
             "defects_found_actual","defects_verification_target", "defects_verification_actual", "test_scripts_creation_target", "test_scripts_creation_actual",
-            "test_scripts_execution_target","test_scripts_execution_actual","test_scripts_updation_target", "test_scripts_updation_actual",
+            "test_scripts_execution_target","test_scripts_execution_actual","test_scripts_updation_target", "test_scripts_updation_actual","test_scripts_fixed_target", "test_scripts_fixed_actual",
             "project_doc_target","project_doc_actual","internal_Review_target", "internal_Review_actual",
             
             "regression_cycle_target","regression_cycle_actual","req_anal_target", "req_anal_actual",
@@ -4519,7 +4532,7 @@ def set_targets(emp_id):
                 return redirect(url_for("set_targets", emp_id=emp_id, role=role))
         if target_month_user:
             for field, value in request.form.items():
-                
+                print(field,value)
                 if hasattr(target_user, field):
                     setattr(target_user, field, value)
             target_user.status = "waiting for approval"        
@@ -4527,6 +4540,7 @@ def set_targets(emp_id):
                    
         else:
             target_data = {field: int(value) if value.isdigit() else value for field, value in request.form.items() if hasattr(Target_columns, field)}
+            
             target_data["emp_id"] = emp_id  # Ensure emp_id is included
             target_data["status"] = "waiting for approval"
             new_target_entry = Target_columns(**target_data)
