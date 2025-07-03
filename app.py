@@ -1055,7 +1055,7 @@ def home():
         # Add to DB and commit the session
         db.session.add(new_entry)
         db.session.flush()
-        if form_data['project'] == 'Indihood':
+        if form_data['project'] == 'Indihood' or form_data['project'] == 'ONECLICKLCA':
             indihood_entry = IndihoodQuality(
                 dform_id=new_entry.id,  # Link to that specific Dform row
                 today_date=new_entry.today_date,
@@ -2432,7 +2432,7 @@ def view_dscore():
                     base_quality = 100
                     break
 
-            print(base_quality)    
+               
             # Extract project names from the query result
             project_names = [proj[0] for proj in projects_under_manager]
             is_actual_manager = False
@@ -2482,7 +2482,7 @@ def view_dscore():
                     selected_project
                 )
                 
-                if emp.emp_project == "Indihood":
+                if emp.emp_project == "Indihood" or emp.emp_project == "ONECLICKLCA":
                     joined_matched_employees = matched_employees.join(
                             IndihoodQuality, Dform.id == IndihoodQuality.dform_id
                         ).add_entity(IndihoodQuality)
@@ -2532,7 +2532,7 @@ def view_dscore():
                             has_client_escalation = True        
 
                 # Final quality calculation
-                if emp.emp_project == "Indihood":
+                if emp.emp_project == "Indihood" or emp.emp_project == "ONECLICKLCA":
                     deductions = (
                         total_not_writing_testcase_value +
                         total_invalid_defects_value + total_client_req_value +
@@ -2784,7 +2784,7 @@ def view_dscore():
             total_client_esc = 0
             total_tst_cases_missing = 0
 
-            if project == "Indihood":
+            if project == "Indihood" or emp.emp_project == "ONECLICKLCA":
                 joined_matched_employees = matched_employees.join(
                     IndihoodQuality, Dform.id == IndihoodQuality.dform_id
                 ).add_entity(IndihoodQuality)
@@ -2834,7 +2834,7 @@ def view_dscore():
                         has_client_escalation = True
 
             # Final quality calculation
-            if project == "Indihood":
+            if project == "Indihood" or emp.emp_project == "ONECLICKLCA":
                 deductions = (
                     total_not_writing_testcase_value +
                     total_invalid_defects_value + total_client_req_value +
@@ -3051,7 +3051,7 @@ def view_dscore():
                     selected_year,
                     selected_project
                 )
-                if emp.emp_project == "Indihood":
+                if emp.emp_project == "Indihood" or emp.emp_project == "ONECLICKLCA":
                     joined_matched_employees = matched_employees.join(
                             IndihoodQuality, Dform.id == IndihoodQuality.dform_id
                         ).add_entity(IndihoodQuality)
@@ -3101,7 +3101,7 @@ def view_dscore():
                         total_att_count += entry.att or 0
                         if entry.client_esc and entry.client_esc > 0:
                             has_client_escalation = True
-                if emp.emp_project == "Indihood":
+                if emp.emp_project == "Indihood" or emp.emp_project == "ONECLICKLCA":
                     deductions = (
                         total_not_writing_testcase_value +
                         total_invalid_defects_value + total_client_req_value +
@@ -3439,14 +3439,14 @@ def full_table_view(id):
     ).first()
     approved = "Yes" if approval_exists else "No"
     filtered_query=get_first_filtered_employees(base_query, None, selected_month, selected_date, selected_year,None)
-    if project == "Indihood":
+    if project == "Indihood" or project == "ONECLICKLCA":
         filtered_query = filtered_query.outerjoin(IndihoodQuality, Dform.id == IndihoodQuality.dform_id)
         filtered_query = filtered_query.add_entity(IndihoodQuality)
     if project == "Auxo":
         filtered_query = filtered_query.outerjoin(AuxoQuality, Dform.id == AuxoQuality.dform_id)
         filtered_query = filtered_query.add_entity(AuxoQuality)
     employee = filtered_query.all() 
-    if project == "Indihood":
+    if project == "Indihood" or project == "ONECLICKLCA":
         for dform, quality in employee:
             commn_value = quality.communication_value if quality and quality.communication_value is not None else 0
             inv_defs_value = quality.invalid_defects_value if quality and quality.invalid_defects_value is not None else 0
@@ -3732,13 +3732,79 @@ def full_table_view(id):
                 "Requirement analyzing/writing testcondition",
                 "End-End test cases executed"
             ],
+            "Opus Clip":[
+                "Testcase Creation",  # Only these categories should be included
+                "Testcase Updation",
+                "Testcase Execution",
+                "Defects (5/day)",
+                "Issue Verification",
+                "Site Scrub",
+                "Project Documentation",
+                "Internal review",
+                "Regression cycle",
+                "Requirement analyzing/writing testcondition",
+                "End-End test cases executed"
+            ],
+            "Trademo":[
+                "Testcase Creation",  # Only these categories should be included
+                "Testcase Updation",
+                "Testcase Execution",
+                "Defects (5/day)",
+                "Issue Verification",
+                "Site Scrub",
+                "Project Documentation",
+                "Internal review",
+                "Regression cycle",
+                "Requirement analyzing/writing testcondition",
+                "End-End test cases executed",
+                "Task Achivement/Coverage score",  # Only these categories should be included
+                "Assessment Test score",
+                "Assessment Retest score",
+                "Certification Test score",
+                "Certification Retest score"
+            ],
+            "Heymax":[
+                "Testcase Creation",  # Only these categories should be included
+                "Testcase Updation",
+                "Testcase Execution",
+                "Defects (5/day)",
+                "Issue Verification",
+                "Site Scrub",
+                "Project Documentation",
+                "Internal review",
+                "Regression cycle",
+                "Requirement analyzing/writing testcondition",
+                "End-End test cases executed",
+                "Task Achivement/Coverage score",  # Only these categories should be included
+                "Assessment Test score",
+                "Assessment Retest score",
+                "Certification Test score",
+                "Certification Retest score"
+            ],
             "Bench" :[
                 "Task Achivement/Coverage score",  # Only these categories should be included
                 "Assessment Test score",
                 "Assessment Retest score",
                 "Certification Test score",
                 "Certification Retest score"
-            ]
+            ],
+            "ONECLICKLCA": [
+                "Testcase Creation",  # Only these categories should be included
+                "Testcase Updation",
+                "Testcase Execution",
+                "Defects (5/day)",
+                "Issue Verification",
+                "Testscripts Creation",
+                "Testscripts Updation",
+                "Testscripts Execution",
+                "Testscripts Fixed",
+                "Site Scrub",
+                "Project Documentation",
+                "Internal review",
+                "Regression cycle",
+                "Requirement analyzing/writing testcondition",
+                "End-End test cases executed"
+            ],
 
             # Add more projects with specific selections here
         }
@@ -3833,7 +3899,7 @@ def full_table_view(id):
         # ,"Dmax_score",new_init
         # "quality", "attendance", "skill",  
     ]
-    if project == "Indihood":
+    if project == "Indihood" or project == "ONECLICKLCA":
         
         ALLOWED_COLUMNS = [
             "employee_name", "today_date", "test_case_creation_target",
@@ -3884,7 +3950,7 @@ def full_table_view(id):
         "employee_name", "today_date","inv_defs",  "spel_errors",  "client_esc", "tst_cases_missing","att","skill","new_initiatives",
           "target","actual","production","quality","attendance","skill","new_initiatives","Dmax_score"
     ]
-    if project == "Indihood":
+    if project == "Indihood" or project == "ONECLICKLCA":
         core_columns = [
             "employee_name", "today_date","att","skill","new_initiatives",
             "target","actual","production","quality","attendance","skill","new_initiatives","Dmax_score"
@@ -3938,7 +4004,7 @@ def full_table_view(id):
                     filtered_columns.append(column)
                   
     
-     
+    
     return render_template("full_table_view.html", employee=employee, ALLOWED_COLUMNS=filtered_columns,TABLE_HEADERS=TABLE_HEADERS,years=years,selected_year=int(selected_year),selected_date=selected_date,monthsDict=monthsDict,current_month=current_month,selected_month=selected_month,project=project,role=role,approved=approved)
     
     

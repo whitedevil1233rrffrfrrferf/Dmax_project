@@ -140,7 +140,10 @@ function toggleProjectTable() {
         "IQHive":["test_cases_section","defects_section","test_scripts_section","others_section"],
         "LevelBlue":["test_cases_section","defects_section","test_scripts_section","others_section"],
         "Opus Clip":["test_cases_section","defects_section","others_section"],
-        "Web Development":["web_section"]
+        "Web Development":["web_section"],
+        "Trademo":["test_cases_section","defects_section","others_section","training_section"],
+        "Heymax":["test_cases_section","defects_section","others_section","training_section"],
+        "ONECLICKLCA":["test_cases_section","defects_section","test_scripts_section","others_section"]
     }
     const allSections = new Set(Object.values(projectSections).flat());
     allSections.forEach(sectionId => {
@@ -152,7 +155,7 @@ function toggleProjectTable() {
         });
     }
     
-    if (projectSelectValue === "Indihood") {
+    if (projectSelectValue === "Indihood" || projectSelectValue === "ONECLICKLCA") {
         const indihoodQuality = document.getElementById("Indihood_quality");
         const quality = document.getElementById("quality");
         const Auxo_quality = document.getElementById("Auxo_quality");
