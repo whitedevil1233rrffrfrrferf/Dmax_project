@@ -68,6 +68,20 @@
                 </a>
             </div>
           </form>
+          {%- with messages = get_flashed_messages(with_categories=true) %}
+          {%- if messages %}
+          <div class="d-flex justify-content-center mt-3">
+            <div class="w-75">
+              {%- for category, message in messages %}
+                {# Treat default category 'message' as 'info' #}
+                <div class="alert alert-{{ 'info' if category == 'message' else category }} text-center" role="alert">
+                  {{ message }}
+                </div>
+              {%- endfor %}
+            </div>
+          </div>
+          {%- endif %}
+          {%- endwith %}
     </div>
 </body>
 </html>

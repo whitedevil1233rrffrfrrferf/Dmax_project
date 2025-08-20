@@ -1,5 +1,7 @@
 from io import BytesIO
 import tempfile
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 import pandas as pd
 from flask import Flask,render_template,request,redirect, send_file,url_for,jsonify,flash,session
 from flask_login import UserMixin,LoginManager, login_user, logout_user, login_required, current_user
@@ -18,7 +20,6 @@ import requests
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 import tempfile
-from flask_mail import Mail, Message
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 app=Flask(__name__)
 application=app
@@ -65,7 +66,7 @@ def credentials_to_dict(credentials):
     }
 
 app.config['SECRET_KEY'] = 'your_secret_key'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///employees.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:1234@localhost/test'
 app.config['SQLALCHEMY_BINDS']={
     'dform':'sqlite:///dform.db',
     'emp_info':'sqlite:///empinfo.db',
@@ -76,15 +77,6 @@ app.config['SQLALCHEMY_BINDS']={
 }
 db = SQLAlchemy(app) 
 
-## Flask email config
-
-app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')
-app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT'))
-app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS').lower() == 'true'
-app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
-app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
-app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
-mail = Mail(app)
 
 ###############################################  Helper Functions ###############################################
 
@@ -1751,15 +1743,6 @@ def register():
         new_employee = Employee(emp_id=username, password=password, role=role,email=email,name=name)
         db.session.add(new_employee)
         db.session.commit()
-        try:
-            msg = Message(
-                subject="Welcome to the Company",
-                recipients=["varunrram2003@gmail.com"],  # send to the registered email
-                body=f"Hi {name},\n\nWelcome aboard! Your account has been successfully created."
-            )
-            mail.send(msg)
-        except Exception as e:
-            flash(f"Error sending email: {str(e)}", "danger")
         flash('Employee registered successfully!', 'success')
         
         return redirect(url_for('sign'))
@@ -1800,45 +1783,27 @@ def edit_employee(employee_id):
         emp_designation = corrections.get(request.form['emp_designation'], request.form['emp_designation'])
         reporting_manager = request.form['reporting_manager']
         actual_reporting_manager = request.form['actual_reporting_manager']
-        if emp_project != "Bench":
-            match = ProjectTargets.query.filter(
-                func.lower(ProjectTargets.Project) == emp_project.lower(),
-                func.lower(ProjectTargets.Lead) == reporting_manager.lower(),
-                func.lower(ProjectTargets.ApprovalManager) == actual_reporting_manager.lower()
-            ).first()
-            # Update the employee data with form values
-            if match:
-                employee.emp_name = request.form['emp_name']
-                employee.emp_id=request.form['emp_id']
-                employee.emp_email = request.form['emp_email']
-                employee.emp_project = request.form['emp_project']
-                employee.emp_designation = corrections.get(request.form['emp_designation'], request.form['emp_designation'])
-                employee.reporting_manager = request.form['reporting_manager']  # Lead/Spocs
-                employee.actual_reporting_manager = request.form['actual_reporting_manager']
-                flash("Updated Sucessfully","success")  
-            else:
-                flash("Lead or Approval Manager does not match with the selected Project","danger")   
-            # Save the updated data back to the database
+        match = ProjectTargets.query.filter(
+            func.lower(ProjectTargets.Project) == emp_project.lower(),
+            func.lower(ProjectTargets.Lead) == reporting_manager.lower(),
+            func.lower(ProjectTargets.ApprovalManager) == actual_reporting_manager.lower()
+        ).first()
+        # Update the employee data with form values
+        if match:
+            employee.emp_name = request.form['emp_name']
+            employee.emp_id=request.form['emp_id']
+            employee.emp_email = request.form['emp_email']
+            employee.emp_project = request.form['emp_project']
+            employee.emp_designation = corrections.get(request.form['emp_designation'], request.form['emp_designation'])
+            employee.reporting_manager = request.form['reporting_manager']  # Lead/Spocs
+            employee.actual_reporting_manager = request.form['actual_reporting_manager']
         else:
-            lead_exists = Employee.query.filter(
-                func.lower(Employee.name) == reporting_manager.lower()
-            ).first()
-            appr_exists = Employee.query.filter(
-                func.lower(Employee.name) == actual_reporting_manager.lower()
-            ).first()
-            if lead_exists and appr_exists:
-                employee.emp_name = request.form['emp_name']
-                employee.emp_id=request.form['emp_id']
-                employee.emp_email = request.form['emp_email']
-                employee.emp_project = request.form['emp_project']
-                employee.emp_designation = corrections.get(request.form['emp_designation'], request.form['emp_designation'])
-                employee.reporting_manager = request.form['reporting_manager']  # Lead/Spocs
-                employee.actual_reporting_manager = request.form['actual_reporting_manager']
-                flash("Updated Sucessfully","success")
-            else:
-                flash("Lead or Approval Manager does not match with the selected Project","danger")      
+            flash("Lead or Approval Manager does not exist in the employee Database")    
+        # Save the updated data back to the database
         
         db.session.commit()
+        
+        
         
     # Render the edit form with existing values
     return render_template('edit_employee.html', employee=employee,projects=projects,designations=designations)
@@ -1882,17 +1847,17 @@ def employee_upload():
                 project_name = employee_data.get('emp_project')
                 lead_name = employee_data.get('reporting_manager', '').lower()
                 approval_manager = employee_data.get('actual_reporting_manager', '').lower()
-                if project_name != "Bench":    
-                    # Query ProjectTargets to validate the combination
-                        valid_project = ProjectTargets.query.filter(
-                            func.lower(ProjectTargets.Project) == project_name.lower(),
-                            func.lower(ProjectTargets.Lead) == lead_name,
-                            func.lower(ProjectTargets.ApprovalManager) == approval_manager
-                        ).first()
 
-                        if not valid_project:
-                            flash(f"Invalid combination for employee {employee_data.get('emp_name')}: Project '{project_name}' with Lead '{lead_name}' and Approval Manager '{approval_manager}' does not match records.", "danger")
-                            continue
+                # Query ProjectTargets to validate the combination
+                valid_project = ProjectTargets.query.filter(
+                    func.lower(ProjectTargets.Project) == project_name.lower(),
+                    func.lower(ProjectTargets.Lead) == lead_name,
+                    func.lower(ProjectTargets.ApprovalManager) == approval_manager
+                ).first()
+
+                if not valid_project:
+                    flash(f"Invalid combination for employee {employee_data.get('emp_name')}: Project '{project_name}' with Lead '{lead_name}' and Approval Manager '{approval_manager}' does not match records.", "danger")
+                    continue
                 filled_fields = [field for field in required_fields if employee_data.get(field)]
 
                 if 0 < len(filled_fields) < len(required_fields):  # If only some required fields are filled
@@ -2376,26 +2341,7 @@ def team_dmax_table():
         status_map={t.emp_id:t.status for t in period_targets}
         filtered_employees = []
         for emp in all_accessible_employees:
-                proj_lower = (emp.emp_project or "")
-                rep_mgr = (emp.reporting_manager or "").strip().lower()
-                appr_mgr = (emp.actual_reporting_manager or "").strip().lower()
-                if proj_lower == "Bench":
-                    role_value = (
-                        "Project Lead" if rep_mgr == user_name
-                        else ("Approval Manager" if appr_mgr == user_name else "Employee")
-                    )
-                    # Optional: reflect approval-manager flag on a per-employee basis for Bench
-                    is_approval_manager = appr_mgr == user_name
-                else:
-        
-                    is_lead = (
-                        emp.emp_project in [proj.Project for proj in projects_led_by_user]
-                        or (user_name.lower() == "jerene jose" and emp.emp_id == "DC5145")
-                    )
-                    is_appr = emp.emp_project in [proj.Project for proj in user_manager]
-                    role_value = "Project Lead" if is_lead else ("Approval Manager" if is_appr else "Employee")
-                    is_approval_manager = True if emp.emp_project in project_names else False    
-                
+                is_approval_manager = True if emp.emp_project in project_names else False
                 filtered_employees.append({
                     "name": emp.emp_name,
                     "project":emp.emp_project,
@@ -2405,7 +2351,12 @@ def team_dmax_table():
                     "reporting_manager":emp.reporting_manager,
                     "actual_reporting_manager":emp.actual_reporting_manager,
                     "id":emp.id,
-                    "role": role_value,
+                    "role": (
+                                "Project Lead" if emp.emp_project in [proj.Project for proj in projects_led_by_user] or 
+                                (user_name.lower() == "jerene jose" and emp.emp_id == "DC5145")
+                                else ("Approval Manager" if emp.emp_project in [proj.Project for proj in user_manager]
+                                else "Employee")
+                            ) , # Determine role,
                     "has_approved_target": (emp.emp_id in employees_with_approved_targets) if employees_with_approved_targets else False , # Store whether they have an approved target
                     "has_pending_target": employees_with_pending_targets.get(emp.emp_id, {}),
                     "is_approval_manager": is_approval_manager if is_approval_manager else False,
@@ -4365,18 +4316,18 @@ def form_bulk_upload():
         "test_scripts_updation_actual": 19,
         "test_scripts_execution_target": 20,
         "test_scripts_execution_actual": 21,
-        "project_doc_target": 22,
-        "project_doc_actual": 23,
-        "internal_Review_target": 24,
-        "internal_Review_actual": 25,
-        "regression_cycle_target": 26,
-        "regression_cycle_actual": 27,
-        "req_anal_target": 28,
-        "req_anal_actual": 29,
-        "end_cases_exec_target": 30,
-        "end_cases_exec_actual": 31,
-        "site_Scrub_target": 32,
-        "site_Scrub_actual": 33,
+        "site_Scrub_target": 22,
+        "site_Scrub_actual": 23,
+        "project_doc_target": 24,
+        "project_doc_actual": 25,
+        "internal_Review_target": 26,
+        "internal_Review_actual": 27,
+        "regression_cycle_target": 28,
+        "regression_cycle_actual": 29,
+        "req_anal_target": 30,
+        "req_anal_actual": 31,
+        "end_cases_exec_target": 32,
+        "end_cases_exec_actual": 33,
         "task_coverage_score_target": 34,
         "task_coverage_score_actual": 35,
         "assessment_score_target": 36,
@@ -5320,4 +5271,5 @@ with app.app_context():
 
 if __name__ == "__main__":
     app.run(debug=True)
+    
 
